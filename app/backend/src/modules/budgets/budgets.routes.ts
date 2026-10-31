@@ -62,12 +62,17 @@ export const budgetRoutes: FastifyPluginAsyncTypebox = async (app) => {
         body: UpdateBudgetBodySchema,
         response: { 200: BudgetSchema },
       },
+      preHandler: app.requirePermission('budget:update'),
     },
     (request) => updateBudget(app.prisma, request.user.sub, request.params.id, request.body),
   );
 
-  app.delete('/budgets/:id', { schema: { params: IdParamsSchema } }, async (request, reply) => {
-    await deleteBudget(app.prisma, request.user.sub, request.params.id);
-    return reply.code(204).send();
-  });
+  app.delete(
+    '/budgets/:id',
+    { schema: { params: IdParamsSchema }, preHandler: app.requirePermission('budget:delete') },
+    async (request, reply) => {
+      await deleteBudget(app.prisma, request.params.id);
+      return reply.code(204).send();
+    },
+  );
 };

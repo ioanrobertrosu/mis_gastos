@@ -158,9 +158,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🟢 Implementar la actualización y el borrado
 
 ### 3.3 Autorización por rol
-- [ ] 🔴 Tests de la matriz de permisos (OWNER / EDITOR / LIMITED_EDITOR / VIEWER × acción)
-- [ ] 🟢 Implementar `requireRole(budgetId, roles[])` como `preHandler` reutilizable
-- [ ] 🔵 Refactor: centralizar la matriz de permisos en un único módulo
+- [x] 🔴 Tests de la matriz de permisos (OWNER / EDITOR / LIMITED_EDITOR / VIEWER × acción)
+- [x] 🟢 Implementar `requireRole(budgetId, roles[])` como `preHandler` reutilizable
+  - **Nota:** implementado como `app.requirePermission(action)` sobre la matriz de `modules/budgets/permissions.ts` (acciones en vez de listas de roles). Lee `:id`, deja `request.membership`; 404 si no es miembro, 403 si el rol no basta. VIEWER puede exportar; las contribuciones a metas se añadirán a la matriz en la Fase 5.
+- [x] 🔵 Refactor: centralizar la matriz de permisos en un único módulo
 
 ### 3.4 Invitaciones
 - [ ] 🔴 Test: OWNER genera una invitación de un solo uso con rol y `expiresAt`

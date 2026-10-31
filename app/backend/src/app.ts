@@ -4,6 +4,7 @@ import type { PrismaClient } from './generated/prisma/client.js';
 import { apiRoutes } from './modules/index.js';
 import { healthRoutes } from './modules/health/health.routes.js';
 import { authPlugin, type AuthOptions } from './plugins/auth.js';
+import { budgetAccessPlugin } from './plugins/budget-access.js';
 import { errorHandlerPlugin } from './plugins/error-handler.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { securityPlugin } from './plugins/security.js';
@@ -34,6 +35,7 @@ export async function buildApp({
   await app.register(prismaPlugin, { client: prisma });
   // Antes de cualquier ruta: un `preHandler: app.authenticate` indefinido dejaría la ruta pública.
   await app.register(authPlugin, auth);
+  await app.register(budgetAccessPlugin);
 
   // /health queda fuera del prefijo: lo consume el healthcheck de Docker.
   await app.register(healthRoutes);
