@@ -18,7 +18,15 @@ describe('loadEnv', () => {
       HOST: '0.0.0.0',
       PORT: 3000,
       DATABASE_URL,
+      CORS_ORIGINS: [],
     });
+  });
+
+  it('convierte CORS_ORIGINS (separado por comas) en una lista sin espacios ni vacíos', () => {
+    expect(
+      loadEnv({ DATABASE_URL, CORS_ORIGINS: 'http://localhost:8081, https://app.example.com,' })
+        .CORS_ORIGINS,
+    ).toEqual(['http://localhost:8081', 'https://app.example.com']);
   });
 
   it('convierte PORT a número', () => {

@@ -9,9 +9,17 @@ const EnvSchema = Type.Object({
   HOST: Type.String({ minLength: 1, default: '0.0.0.0' }),
   PORT: Type.Integer({ minimum: 1, maximum: 65535, default: 3000 }),
   DATABASE_URL: Type.String({ minLength: 1 }),
+  CORS_ORIGINS: Type.String({ default: '' }),
 });
 
-export type Env = Static<typeof EnvSchema>;
+export type Env = Omit<Static<typeof EnvSchema>, 'CORS_ORIGINS'> & { CORS_ORIGINS: string[] };
+
+function parseList(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
 
 export class EnvValidationError extends Error {
   override name = 'EnvValidationError';
@@ -24,7 +32,7 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
   );
 
   if (Value.Check(EnvSchema, env)) {
-    return env;
+    return { ...env, CORS_ORIGINS: parseList(env.CORS_ORIGINS) };
   }
 
   // Una sola línea por variable aunque el esquema genere varios errores (p. ej. uniones).

@@ -33,3 +33,9 @@ export class LimitExceededError extends DomainError {
     super(422, 'LIMIT_EXCEEDED', message);
   }
 }
+
+export class RateLimitedError extends DomainError {
+  constructor(message = 'Demasiadas peticiones, inténtalo más tarde') {
+    super(429, 'RATE_LIMITED', message);
+  }
+}

@@ -4,6 +4,7 @@ import { apiRoutes } from './modules/index.js';
 import { healthRoutes } from './modules/health/health.routes.js';
 import { errorHandlerPlugin } from './plugins/error-handler.js';
 import { prismaPlugin } from './plugins/prisma.js';
+import { securityPlugin } from './plugins/security.js';
 
 export const API_PREFIX = '/api/v1';
 
@@ -11,16 +12,20 @@ export interface BuildAppOptions extends FastifyServerOptions {
   prisma: PrismaClient;
   /** Por defecto `false`: los errores 500 no revelan su mensaje original. */
   exposeInternalErrors?: boolean;
+  /** Orígenes permitidos por CORS. Por defecto ninguno. */
+  corsOrigins?: string[];
 }
 
 export async function buildApp({
   prisma,
   exposeInternalErrors = false,
+  corsOrigins = [],
   ...options
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify(options);
 
   await app.register(errorHandlerPlugin, { exposeInternalErrors });
+  await app.register(securityPlugin, { corsOrigins });
   await app.register(prismaPlugin, { client: prisma });
 
   // /health queda fuera del prefijo: lo consume el healthcheck de Docker.

@@ -109,9 +109,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🟢 Implementar `setErrorHandler` y errores de dominio tipados (`NotFound`, `Forbidden`, `Conflict`, `LimitExceeded`)
 - [x] 🔴 Test: un parámetro `:id` que no es UUID devuelve `400` sin llegar a Prisma
 - [x] 🟢 Implementar un esquema reutilizable de parámetros UUID
-- [ ] Logger Pino configurado (JSON en prod, `pino-pretty` en dev, redacción de `authorization`)
-- [ ] CORS y `@fastify/helmet` configurados
-- [ ] `@fastify/rate-limit` en rutas públicas y de invitación
+- [x] Logger Pino configurado (JSON en prod, `pino-pretty` en dev, redacción de `authorization`)
+- [x] CORS y `@fastify/helmet` configurados
+- [x] `@fastify/rate-limit` en rutas públicas y de invitación
+  - **Nota:** registrado con `global: false`; cada ruta pública o de invitación lo activa con `config.rateLimit` al crearse (Fase 3).
 
 ---
 
