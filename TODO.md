@@ -79,16 +79,16 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** Prisma 7 ya no admite `url`/`directUrl` en `schema.prisma`. `prisma.config.ts` usa `DIRECT_URL` (CLI/migraciones) y el cliente en runtime usará `DATABASE_URL` vía `@prisma/adapter-pg`. Generador `prisma-client` con salida en `src/generated/prisma`.
 - [x] Trasladar **solo** el modelo `User` a `schema.prisma`
 - [ ] Ejecutar la primera migración contra Supabase (`prisma migrate dev`)
-- [ ] Crear singleton del cliente Prisma como plugin de Fastify (`fastify.prisma`) con cierre en `onClose`
+- [x] Crear singleton del cliente Prisma como plugin de Fastify (`fastify.prisma`) con cierre en `onClose`
 
 ### 1.3 Testing — primer ciclo TDD
 - [x] Instalar y configurar Vitest (`vitest.config.ts`, cobertura con `v8`)
 - [x] 🔴 Test: `buildApp()` arranca y `GET /health` responde `200 { status: "ok" }` (vía `app.inject`)
 - [x] ⏸️ Pausa: el usuario valida el estado Rojo
 - [x] 🟢 Implementar `buildApp()` y la ruta `/health`
-- [ ] 🔴 Test: `/health` informa `db: "up"` cuando Prisma responde a `SELECT 1`
-- [ ] 🟢 Implementar la comprobación de BD en `/health`
-- [ ] 🔵 Refactor
+- [x] 🔴 Test: `/health` informa `db: "up"` cuando Prisma responde a `SELECT 1`
+- [x] 🟢 Implementar la comprobación de BD en `/health`
+- [x] 🔵 Refactor
 
 ### 1.4 Configuración y entorno
 - [ ] 🔴 Test: el cargador de configuración falla de forma explícita si falta una variable obligatoria
