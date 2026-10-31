@@ -1,20 +1,28 @@
-version: '3.8'
-
+# Producción: docker compose -f docker-compose.yml up -d
+# Desarrollo: docker compose up (aplica docker-compose.override.yml)
 services:
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: budget_api
+      context: ./app/backend
+      target: runtime
+    image: mis_gastos-api
+    container_name: mis_gastos_api
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    env_file:
+      - path: ./app/backend/.env
+        required: true
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${SUPABASE_DATABASE_URL}
+      HOST: 0.0.0.0
       PORT: 3000
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_AUDIENCE: ${JWT_AUDIENCE}
+    ports:
+      - '3000:3000'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - internal_network
 

@@ -30,10 +30,11 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [ ] Separar variables de backend y de cliente (las del cliente con prefijo `EXPO_PUBLIC_`; los `CLIENT_SECRET` nunca en el cliente)
 
 ### 0.3 Docker Compose
-- [ ] Pasar al servicio `api` todas las variables necesarias (`DATABASE_URL`, `DIRECT_URL`, `SUPABASE_JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `PORT`, `NODE_ENV`)
-- [ ] Separar entornos: `docker-compose.yml` (prod) + `docker-compose.override.yml` (dev con volumen `./app/backend/src` y `npm run dev`)
-- [ ] Eliminar la clave obsoleta `version: '3.8'`
-- [ ] Añadir `healthcheck` del servicio apuntando a `GET /health`
+- [x] Pasar al servicio `api` todas las variables necesarias (`DATABASE_URL`, `DIRECT_URL`, `SUPABASE_JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `PORT`, `NODE_ENV`)
+  - **Nota:** se cargan con `env_file: ./app/backend/.env` (fuente única); `NODE_ENV`, `HOST` y `PORT` se fijan en `environment`. Los valores con `$` deben ir entre comillas simples en `.env` para que Compose no los interpole.
+- [x] Separar entornos: `docker-compose.yml` (prod) + `docker-compose.override.yml` (dev con volumen `./app/backend/src` y `npm run dev`)
+- [x] Eliminar la clave obsoleta `version: '3.8'`
+- [x] Añadir `healthcheck` del servicio apuntando a `GET /health`
 
 ### 0.4 Decisiones de diseño (❓)
 - [x] ❓ Validación: **TypeBox** (nativo Fastify) o **Zod** → elegir una y documentarla en [rules/backend-and-db.md](rules/backend-and-db.md)
@@ -78,7 +79,7 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] Configurar `datasource` con `DATABASE_URL` y `directUrl = DIRECT_URL`
   - **Nota:** Prisma 7 ya no admite `url`/`directUrl` en `schema.prisma`. `prisma.config.ts` usa `DIRECT_URL` (CLI/migraciones) y el cliente en runtime usará `DATABASE_URL` vía `@prisma/adapter-pg`. Generador `prisma-client` con salida en `src/generated/prisma`.
 - [x] Trasladar **solo** el modelo `User` a `schema.prisma`
-- [ ] Ejecutar la primera migración contra Supabase (`prisma migrate dev`)
+- [x] Ejecutar la primera migración contra Supabase (`prisma migrate dev`)
 - [x] Crear singleton del cliente Prisma como plugin de Fastify (`fastify.prisma`) con cierre en `onClose`
 
 ### 1.3 Testing — primer ciclo TDD
@@ -96,11 +97,11 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [ ] Configurar una BD de test aislada (schema separado o proyecto Supabase de test) y `setup` de Vitest que limpie datos entre tests
 
 ### 1.5 Contenedorización
-- [ ] Crear `app/backend/Dockerfile` multi-stage (deps → build → runtime con `node:lts-alpine`, usuario no root)
-- [ ] Crear `app/backend/.dockerignore`
-- [ ] Actualizar `build.context` de `docker-compose.yml` a `./app/backend`
-- [ ] Ejecutar `prisma generate` dentro de la imagen
-- [ ] Verificar `docker compose up` y `GET /health` desde el host
+- [x] Crear `app/backend/Dockerfile` multi-stage (deps → build → runtime con `node:lts-alpine`, usuario no root)
+- [x] Crear `app/backend/.dockerignore`
+- [x] Actualizar `build.context` de `docker-compose.yml` a `./app/backend`
+- [x] Ejecutar `prisma generate` dentro de la imagen
+- [x] Verificar `docker compose up` y `GET /health` desde el host
 
 ### 1.6 Base transversal de la API
 - [ ] Prefijo global de rutas `/api/v1`

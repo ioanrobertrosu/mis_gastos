@@ -2,9 +2,11 @@
 // DIRECT_URL para migraciones y DATABASE_URL para el cliente en runtime.
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "esm"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  // Explícito: si no, Prisma lo infiere del tsconfig, que no existe aún en la etapa `deps` de Docker.
+  importFileExtension = "js"
 }
 
 datasource db {

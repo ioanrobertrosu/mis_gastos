@@ -1,0 +1,10 @@
+services:
+  api:
+    build:
+      target: dev
+    image: mis_gastos-api:dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./app/backend/src:/app/src
+    command: npm run dev
