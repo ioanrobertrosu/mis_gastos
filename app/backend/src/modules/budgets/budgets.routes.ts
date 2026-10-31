@@ -1,7 +1,13 @@
 import { type FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
 import { Currency, Role } from '../../generated/prisma/enums.js';
 import { IdParamsSchema } from '../../shared/schemas.js';
-import { createBudget, getBudget, listBudgets } from './budgets.service.js';
+import {
+  createBudget,
+  deleteBudget,
+  getBudget,
+  listBudgets,
+  updateBudget,
+} from './budgets.service.js';
 
 const BudgetSchema = Type.Object({
   id: Type.String(),
@@ -13,12 +19,16 @@ const BudgetSchema = Type.Object({
   updatedAt: Type.String({ format: 'date-time' }),
 });
 
+const BudgetNameSchema = Type.String({ minLength: 1, maxLength: 60, pattern: String.raw`\S` });
+
 const CreateBudgetBodySchema = Type.Object(
-  {
-    name: Type.String({ minLength: 1, maxLength: 60, pattern: String.raw`\S` }),
-    currency: Type.Optional(Type.Enum(Currency)),
-  },
+  { name: BudgetNameSchema, currency: Type.Optional(Type.Enum(Currency)) },
   { additionalProperties: false },
+);
+
+const UpdateBudgetBodySchema = Type.Object(
+  { name: Type.Optional(BudgetNameSchema), currency: Type.Optional(Type.Enum(Currency)) },
+  { additionalProperties: false, minProperties: 1 },
 );
 
 export const budgetRoutes: FastifyPluginAsyncTypebox = async (app) => {
@@ -43,4 +53,21 @@ export const budgetRoutes: FastifyPluginAsyncTypebox = async (app) => {
     { schema: { params: IdParamsSchema, response: { 200: BudgetSchema } } },
     (request) => getBudget(app.prisma, request.user.sub, request.params.id),
   );
+
+  app.patch(
+    '/budgets/:id',
+    {
+      schema: {
+        params: IdParamsSchema,
+        body: UpdateBudgetBodySchema,
+        response: { 200: BudgetSchema },
+      },
+    },
+    (request) => updateBudget(app.prisma, request.user.sub, request.params.id, request.body),
+  );
+
+  app.delete('/budgets/:id', { schema: { params: IdParamsSchema } }, async (request, reply) => {
+    await deleteBudget(app.prisma, request.user.sub, request.params.id);
+    return reply.code(204).send();
+  });
 };

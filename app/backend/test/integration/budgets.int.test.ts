@@ -16,7 +16,12 @@ beforeEach(async () => {
   app = await buildApp({ auth: TEST_AUTH, prisma: testPrisma });
 });
 
-async function api(user: TestUser | null, method: 'GET' | 'POST', url: string, payload?: object) {
+async function api(
+  user: TestUser | null,
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  url: string,
+  payload?: object,
+) {
   return app.inject({
     method,
     url: `/api/v1${url}`,
@@ -178,6 +183,118 @@ describe('GET /api/v1/budgets/:id', () => {
 
   it('devuelve 400 si el id no es un UUID', async () => {
     const response = await api(ANA, 'GET', '/budgets/no-es-un-uuid');
+
+    expect(response.statusCode).toBe(400);
+  });
+});
+
+const NON_OWNER_ROLES = ['EDITOR', 'LIMITED_EDITOR', 'VIEWER'] as const;
+
+describe('PATCH /api/v1/budgets/:id', () => {
+  it('el OWNER cambia el nombre y la divisa', async () => {
+    const id = await seedBudget([{ user: ANA, role: 'OWNER' }], { name: 'Casa' });
+
+    const response = await api(ANA, 'PATCH', `/budgets/${id}`, {
+      name: 'Hogar',
+      currency: 'GBP',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ id, name: 'Hogar', currency: 'GBP', role: 'OWNER' });
+    await expect(
+      testPrisma.budget.findUnique({ where: { id }, select: { name: true, currency: true } }),
+    ).resolves.toEqual({ name: 'Hogar', currency: 'GBP' });
+  });
+
+  it('una actualización parcial no toca los demás campos', async () => {
+    const id = await seedBudget([{ user: ANA, role: 'OWNER' }], { name: 'Casa' });
+
+    const response = await api(ANA, 'PATCH', `/budgets/${id}`, { currency: 'JPY' });
+
+    expect(response.json()).toMatchObject({ name: 'Casa', currency: 'JPY' });
+  });
+
+  it.each(NON_OWNER_ROLES)('un %s recibe 403 y el presupuesto no cambia', async (role) => {
+    const id = await seedBudget(
+      [
+        { user: BEA, role: 'OWNER' },
+        { user: ANA, role },
+      ],
+      { name: 'Casa' },
+    );
+
+    const response = await api(ANA, 'PATCH', `/budgets/${id}`, { name: 'Hackeado' });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ error: { code: 'FORBIDDEN' } });
+    await expect(
+      testPrisma.budget.findUnique({ where: { id }, select: { name: true } }),
+    ).resolves.toEqual({ name: 'Casa' });
+  });
+
+  it('un no miembro recibe 404', async () => {
+    const id = await seedBudget([{ user: BEA, role: 'OWNER' }]);
+
+    const response = await api(ANA, 'PATCH', `/budgets/${id}`, { name: 'Hackeado' });
+
+    expect(response.statusCode).toBe(404);
+    // El mismo 404 que da el presupuesto, no el de "ruta inexistente".
+    expect(response.json()).toEqual((await api(ANA, 'GET', `/budgets/${id}`)).json());
+  });
+
+  it.each([
+    ['cuerpo vacío', {}],
+    ['nombre vacío', { name: '' }],
+    ['divisa no soportada', { currency: 'BTC' }],
+    ['campo no permitido', { name: 'Casa', createdAt: '2020-01-01T00:00:00.000Z' }],
+  ])('rechaza con 400 un cuerpo inválido: %s', async (_case, payload) => {
+    const id = await seedBudget([{ user: ANA, role: 'OWNER' }]);
+
+    const response = await api(ANA, 'PATCH', `/budgets/${id}`, payload);
+
+    expect(response.statusCode).toBe(400);
+  });
+});
+
+describe('DELETE /api/v1/budgets/:id', () => {
+  it('el OWNER borra el presupuesto y sus membresías', async () => {
+    const id = await seedBudget([
+      { user: ANA, role: 'OWNER' },
+      { user: BEA, role: 'EDITOR' },
+    ]);
+
+    const response = await api(ANA, 'DELETE', `/budgets/${id}`);
+
+    expect(response.statusCode).toBe(204);
+    expect(response.body).toBe('');
+    await expect(testPrisma.budget.count()).resolves.toBe(0);
+    await expect(testPrisma.budgetMember.count()).resolves.toBe(0);
+  });
+
+  it.each(NON_OWNER_ROLES)('un %s recibe 403 y el presupuesto se conserva', async (role) => {
+    const id = await seedBudget([
+      { user: BEA, role: 'OWNER' },
+      { user: ANA, role },
+    ]);
+
+    const response = await api(ANA, 'DELETE', `/budgets/${id}`);
+
+    expect(response.statusCode).toBe(403);
+    await expect(testPrisma.budget.count({ where: { id } })).resolves.toBe(1);
+  });
+
+  it('un no miembro recibe 404', async () => {
+    const id = await seedBudget([{ user: BEA, role: 'OWNER' }]);
+
+    const response = await api(ANA, 'DELETE', `/budgets/${id}`);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual((await api(ANA, 'GET', `/budgets/${id}`)).json());
+    await expect(testPrisma.budget.count({ where: { id } })).resolves.toBe(1);
+  });
+
+  it('devuelve 400 si el id no es un UUID', async () => {
+    const response = await api(ANA, 'DELETE', '/budgets/no-es-un-uuid');
 
     expect(response.statusCode).toBe(400);
   });

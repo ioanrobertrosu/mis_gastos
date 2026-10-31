@@ -154,8 +154,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: `GET /budgets/:id` devuelve `404` si el usuario no es miembro (no revelar existencia)
 - [x] 🟢 Implementar las rutas de lectura y creación de presupuestos
   - **Nota:** límite de 3 → `422 LIMIT_EXCEEDED`. La creación bloquea la fila del `User` (`SELECT … FOR UPDATE`) dentro de la transacción para serializar creaciones simultáneas; el test de concurrencia falla si se quita el bloqueo.
-- [ ] 🔴 Test: solo OWNER puede `PATCH` (nombre, divisa) y `DELETE` del presupuesto
-- [ ] 🟢 Implementar la actualización y el borrado
+- [x] 🔴 Test: solo OWNER puede `PATCH` (nombre, divisa) y `DELETE` del presupuesto
+- [x] 🟢 Implementar la actualización y el borrado
 
 ### 3.3 Autorización por rol
 - [ ] 🔴 Tests de la matriz de permisos (OWNER / EDITOR / LIMITED_EDITOR / VIEWER × acción)

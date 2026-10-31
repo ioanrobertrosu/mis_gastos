@@ -1,5 +1,5 @@
 import type { Currency, Prisma, PrismaClient, Role } from '../../generated/prisma/client.js';
-import { LimitExceededError, NotFoundError } from '../../shared/errors.js';
+import { ForbiddenError, LimitExceededError, NotFoundError } from '../../shared/errors.js';
 import { MAX_BUDGETS_PER_USER } from './limits.js';
 
 const membershipSelect = {
@@ -93,4 +93,40 @@ export async function getBudget(
   });
   if (!membership) throw new NotFoundError('Presupuesto no encontrado');
   return toView(membership);
+}
+
+/**
+ * Exige que el usuario sea OWNER: 404 si no es miembro (como en `getBudget`), 403 si lo es
+ * con otro rol. Se centralizará en la matriz de permisos de la Fase 3.3.
+ */
+async function requireOwner(prisma: PrismaClient, userId: string, budgetId: string) {
+  const membership = await prisma.budgetMember.findUnique({
+    where: { userId_budgetId: { userId, budgetId } },
+    select: { role: true },
+  });
+  if (!membership) throw new NotFoundError('Presupuesto no encontrado');
+  if (membership.role !== 'OWNER') {
+    throw new ForbiddenError('Solo el propietario puede modificar o borrar el presupuesto');
+  }
+}
+
+export async function updateBudget(
+  prisma: PrismaClient,
+  userId: string,
+  budgetId: string,
+  data: { name?: string; currency?: Currency },
+): Promise<BudgetView> {
+  await requireOwner(prisma, userId, budgetId);
+  await prisma.budget.update({ where: { id: budgetId }, data, select: { id: true } });
+  return getBudget(prisma, userId, budgetId);
+}
+
+/** Borra el presupuesto; sus membresías e invitaciones caen en cascada. */
+export async function deleteBudget(
+  prisma: PrismaClient,
+  userId: string,
+  budgetId: string,
+): Promise<void> {
+  await requireOwner(prisma, userId, budgetId);
+  await prisma.budget.delete({ where: { id: budgetId } });
 }
