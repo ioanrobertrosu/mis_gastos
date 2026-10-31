@@ -12,6 +12,7 @@ const prisma = new PrismaClient({
 
 const app = await buildApp({
   prisma,
+  exposeInternalErrors: env.NODE_ENV !== 'production',
   logger: env.NODE_ENV === 'production' ? true : { transport: { target: 'pino-pretty' } },
 });
 

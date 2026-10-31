@@ -104,11 +104,11 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] Verificar `docker compose up` y `GET /health` desde el host
 
 ### 1.6 Base transversal de la API
-- [ ] Prefijo global de rutas `/api/v1`
-- [ ] 🔴 Test: el manejador de errores devuelve un formato uniforme `{ error: { code, message } }` y no filtra stack traces en producción
-- [ ] 🟢 Implementar `setErrorHandler` y errores de dominio tipados (`NotFound`, `Forbidden`, `Conflict`, `LimitExceeded`)
-- [ ] 🔴 Test: un parámetro `:id` que no es UUID devuelve `400` sin llegar a Prisma
-- [ ] 🟢 Implementar un esquema reutilizable de parámetros UUID
+- [x] Prefijo global de rutas `/api/v1`
+- [x] 🔴 Test: el manejador de errores devuelve un formato uniforme `{ error: { code, message } }` y no filtra stack traces en producción
+- [x] 🟢 Implementar `setErrorHandler` y errores de dominio tipados (`NotFound`, `Forbidden`, `Conflict`, `LimitExceeded`)
+- [x] 🔴 Test: un parámetro `:id` que no es UUID devuelve `400` sin llegar a Prisma
+- [x] 🟢 Implementar un esquema reutilizable de parámetros UUID
 - [ ] Logger Pino configurado (JSON en prod, `pino-pretty` en dev, redacción de `authorization`)
 - [ ] CORS y `@fastify/helmet` configurados
 - [ ] `@fastify/rate-limit` en rutas públicas y de invitación
