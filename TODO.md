@@ -60,7 +60,7 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [ ] Añadir `createdAt` a `Transaction` (distinto de `date`, necesario para cursores estables)
 - [ ] Añadir índices sobre FKs sin indexar (`BudgetMember.budgetId`, `Category.budgetId`, `Goal.budgetId`, `GoalContribution.goalId`, `Identity.userId`)
 - [ ] Índice compuesto para paginación: `Transaction(categoryId, date DESC, id)` y `ActivityLog(budgetId, createdAt DESC, id)`
-- [ ] Revisar `OneTimeInvite`: `@@index([token])` es redundante con `@unique`; añadir `createdById`
+- [x] Revisar `OneTimeInvite`: `@@index([token])` es redundante con `@unique`; añadir `createdById`
 - [ ] Reflejar todos los cambios en la sección 4 del [PRD.md](PRD.md)
 
 ---
@@ -145,7 +145,7 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 ## Fase 3 — Presupuestos, miembros, roles e invitaciones
 
 ### 3.1 Esquema
-- [ ] Añadir `Budget`, `BudgetMember`, `OneTimeInvite` y enums `Role` / `Currency`; migrar
+- [x] Añadir `Budget`, `BudgetMember`, `OneTimeInvite` y enums `Role` / `Currency`; migrar
 
 ### 3.2 CRUD de presupuestos
 - [ ] 🔴 Test: `POST /budgets` crea el presupuesto y asigna al creador como `OWNER` (en una transacción)

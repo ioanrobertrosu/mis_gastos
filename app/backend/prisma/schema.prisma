@@ -13,6 +13,22 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  OWNER
+  EDITOR
+  LIMITED_EDITOR
+  VIEWER
+}
+
+enum Currency {
+  EUR
+  USD
+  JPY
+  CNY
+  INR
+  GBP
+}
+
 model User {
   // Sin @default: se asigna explícitamente con el `sub` del JWT de Supabase.
   id          String   @id
@@ -21,7 +37,9 @@ model User {
   avatarUrl   String?
   createdAt   DateTime @default(now())
 
-  identities Identity[]
+  identities         Identity[]
+  memberships        BudgetMember[]
+  invitationsCreated OneTimeInvite[]
 }
 
 // Proveedor de login vinculado (Google, Apple…). Registro informativo: User.id ya es el `sub`.
@@ -36,4 +54,46 @@ model Identity {
 
   @@unique([provider, providerId])
   @@index([userId])
+}
+
+model Budget {
+  id        String   @id @default(uuid())
+  name      String
+  currency  Currency @default(EUR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members     BudgetMember[]
+  invitations OneTimeInvite[]
+}
+
+model BudgetMember {
+  id       String   @id @default(uuid())
+  userId   String
+  budgetId String
+  role     Role     @default(LIMITED_EDITOR)
+  joinedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, budgetId])
+  @@index([budgetId])
+}
+
+model OneTimeInvite {
+  id          String   @id @default(uuid())
+  budgetId    String
+  createdById String
+  token       String   @unique @default(uuid())
+  role        Role     @default(LIMITED_EDITOR)
+  expiresAt   DateTime
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  budget    Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([budgetId])
+  @@index([createdById])
 }

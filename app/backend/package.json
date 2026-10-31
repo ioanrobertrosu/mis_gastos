@@ -21,7 +21,8 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
-    "prisma:migrate": "prisma migrate dev && prisma generate"
+    "prisma:migrate": "prisma migrate dev",
+    "postprisma:migrate": "prisma generate"
   },
   "dependencies": {
     "@fastify/ajv-compiler": "^4.0.7",
