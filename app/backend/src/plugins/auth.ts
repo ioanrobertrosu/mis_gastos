@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-import { jwtVerify } from 'jose';
+import { type JWTPayload, jwtVerify } from 'jose';
+import { type IdentityClaims, syncUser } from '../modules/users/user-sync.js';
 import { UnauthorizedError } from '../shared/errors.js';
 
 /** Usuario autenticado extraído del JWT de Supabase. */
@@ -28,6 +29,23 @@ export interface AuthOptions {
 
 const BEARER = /^Bearer\s+(\S+)$/i;
 
+function stringClaim(source: unknown, key: string): string | undefined {
+  if (typeof source !== 'object' || source === null) return undefined;
+  const value = (source as Record<string, unknown>)[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+/** Claims de Supabase: `app_metadata.provider` y, en OAuth, `user_metadata.provider_id`. */
+function identityClaims(payload: JWTPayload): IdentityClaims {
+  const sub = payload.sub as string;
+  return {
+    sub,
+    email: stringClaim(payload, 'email'),
+    provider: stringClaim(payload.app_metadata, 'provider') ?? 'email',
+    providerId: stringClaim(payload.user_metadata, 'provider_id') ?? sub,
+  };
+}
+
 // Toda la verificación vive aquí: migrar a JWKS (Fase 8) solo cambia este plugin.
 export const authPlugin = fp<AuthOptions>(
   async (app, { jwtSecret, issuer, audience }) => {
@@ -39,23 +57,24 @@ export const authPlugin = fp<AuthOptions>(
       const token = BEARER.exec(request.headers.authorization ?? '')?.[1];
       if (!token) throw new UnauthorizedError();
 
+      let payload: JWTPayload;
       try {
-        const { payload } = await jwtVerify(token, key, {
+        ({ payload } = await jwtVerify(token, key, {
           algorithms: ['HS256'],
           issuer,
           audience,
           requiredClaims: ['sub', 'exp'],
-        });
-        request.user = {
-          sub: payload.sub as string,
-          email: typeof payload.email === 'string' ? payload.email : undefined,
-        };
+        }));
       } catch (error) {
         // El motivo concreto solo va al log; el cliente recibe un mensaje genérico.
         request.log.debug({ err: error }, 'JWT rechazado');
         throw new UnauthorizedError();
       }
+
+      const claims = identityClaims(payload);
+      await syncUser(app.prisma, claims);
+      request.user = { sub: claims.sub, email: claims.email };
     });
   },
-  { name: 'auth' },
+  { name: 'auth', dependencies: ['prisma'] },
 );

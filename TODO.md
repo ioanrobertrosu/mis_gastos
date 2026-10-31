@@ -128,11 +128,12 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] Crear un helper de tests para firmar JWT de prueba
 
 ### 2.2 Sincronización de usuario
-- [ ] Añadir el modelo `Identity` al esquema y migrar
-- [ ] 🔴 Test: el primer acceso con un JWT nuevo crea `User` con `id = sub` + `Identity` (provider leído de `app_metadata.provider`)
-- [ ] 🔴 Test: accesos posteriores reutilizan el mismo `User` (idempotente, sin duplicados)
-- [ ] 🟢 Implementar el upsert de usuario en el hook de autenticación
-- [ ] 🔵 Refactor
+- [x] Añadir el modelo `Identity` al esquema y migrar
+- [x] 🔴 Test: el primer acceso con un JWT nuevo crea `User` con `id = sub` + `Identity` (provider leído de `app_metadata.provider`)
+- [x] 🔴 Test: accesos posteriores reutilizan el mismo `User` (idempotente, sin duplicados)
+- [x] 🟢 Implementar el upsert de usuario en el hook de autenticación
+  - **Nota:** `syncUser` sin transacción, con pasos idempotentes (`createMany` + `skipDuplicates`): camino habitual = 1 lectura de `Identity`. Usuario nuevo sin email → 403; email de otro usuario → 409. `providerId` = `user_metadata.provider_id` o el `sub`; `provider` = `app_metadata.provider` o `email`.
+- [x] 🔵 Refactor
 
 ### 2.3 Perfil
 - [ ] 🔴 Test: `GET /api/v1/me` devuelve el perfil y las membresías

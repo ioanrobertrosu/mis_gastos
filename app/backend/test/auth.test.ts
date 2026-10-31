@@ -1,15 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
+import type { PrismaClient } from '../src/generated/prisma/client.js';
 import { fakePrisma } from './helpers/fake-prisma.js';
 import { signTestToken, TEST_AUTH, TEST_USER, unsignedToken } from './helpers/jwt.js';
 
 let app: FastifyInstance;
+let prisma: PrismaClient;
 const handler = vi.fn(async (request: { user: unknown }) => request.user);
 
 beforeEach(async () => {
   handler.mockClear();
-  app = await buildApp({ prisma: fakePrisma(), auth: TEST_AUTH });
+  prisma = fakePrisma();
+  app = await buildApp({ prisma, auth: TEST_AUTH });
   app.get('/privada', { preHandler: app.authenticate }, handler);
 });
 
@@ -87,7 +90,9 @@ describe('autenticación por JWT de Supabase', () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it('acepta un token sin email (p. ej. login por teléfono) con email undefined', async () => {
+  it('un usuario ya registrado puede entrar con un token sin email (email undefined)', async () => {
+    // Identidad ya existente: el alta (que exige email) no se ejecuta.
+    vi.mocked(prisma.identity.findUnique).mockResolvedValueOnce({ id: 'identity-id' } as never);
     const token = await signTestToken({ email: null });
 
     const response = await get(`Bearer ${token}`);

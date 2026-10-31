@@ -10,6 +10,8 @@ export const TEST_AUTH: AuthOptions = {
 export const TEST_USER = {
   sub: '123e4567-e89b-42d3-a456-426614174000',
   email: 'ana@example.com',
+  /** ID de la cuenta en el proveedor (Google), en `user_metadata.provider_id`. */
+  providerId: '108234567890123456789',
 };
 
 export interface TestTokenOptions {
@@ -21,6 +23,10 @@ export interface TestTokenOptions {
   audience?: string;
   /** Segundos desde epoch; por defecto, dentro de una hora. */
   expiresAt?: number;
+  /** `app_metadata.provider`; por defecto `google`. `null` omite `app_metadata`. */
+  provider?: string | null;
+  /** `user_metadata`; por defecto `{ provider_id: TEST_USER.providerId }`. */
+  userMetadata?: Record<string, unknown>;
 }
 
 /** Firma un JWT HS256 con la forma de los de Supabase Auth. */
@@ -32,9 +38,15 @@ export async function signTestToken(options: TestTokenOptions = {}): Promise<str
     issuer = TEST_AUTH.issuer,
     audience = TEST_AUTH.audience,
     expiresAt = Math.floor(Date.now() / 1000) + 3600,
+    provider = 'google',
+    userMetadata = { provider_id: TEST_USER.providerId },
   } = options;
 
-  const claims = { role: 'authenticated', app_metadata: { provider: 'google' } };
+  const claims = {
+    role: 'authenticated',
+    ...(provider === null ? {} : { app_metadata: { provider, providers: [provider] } }),
+    user_metadata: userMetadata,
+  };
   const jwt = new SignJWT(email === null ? claims : { ...claims, email })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setIssuer(issuer)
