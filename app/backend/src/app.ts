@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { schemaController } from './config/validation.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { apiRoutes } from './modules/index.js';
 import { healthRoutes } from './modules/health/health.routes.js';
@@ -26,7 +27,7 @@ export async function buildApp({
   corsOrigins = [],
   ...options
 }: BuildAppOptions): Promise<FastifyInstance> {
-  const app = Fastify(options);
+  const app = Fastify({ ...options, schemaController });
 
   await app.register(errorHandlerPlugin, { exposeInternalErrors });
   await app.register(securityPlugin, { corsOrigins });

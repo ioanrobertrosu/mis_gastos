@@ -136,9 +136,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔵 Refactor
 
 ### 2.3 Perfil
-- [ ] 🔴 Test: `GET /api/v1/me` devuelve el perfil y las membresías
-- [ ] 🔴 Test: `PATCH /api/v1/me` actualiza `displayName`/`avatarUrl` y rechaza campos no permitidos
-- [ ] 🟢 Implementar las rutas `/me`
+- [x] 🔴 Test: `GET /api/v1/me` devuelve el perfil y las membresías
+- [x] 🔴 Test: `PATCH /api/v1/me` actualiza `displayName`/`avatarUrl` y rechaza campos no permitidos
+- [x] 🟢 Implementar las rutas `/me`
 
 ---
 
