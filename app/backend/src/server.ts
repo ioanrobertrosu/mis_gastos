@@ -13,6 +13,11 @@ const prisma = new PrismaClient({
 
 const app = await buildApp({
   prisma,
+  auth: {
+    jwtSecret: env.SUPABASE_JWT_SECRET,
+    issuer: env.JWT_ISSUER,
+    audience: env.JWT_AUDIENCE,
+  },
   exposeInternalErrors: env.NODE_ENV !== 'production',
   corsOrigins: env.CORS_ORIGINS,
   logger: buildLoggerOptions(env.NODE_ENV),

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { buildLoggerOptions } from '../src/config/logger.js';
 import { fakePrisma } from './helpers/fake-prisma.js';
+import { TEST_AUTH } from './helpers/jwt.js';
 
 function captureStream() {
   const chunks: string[] = [];
@@ -19,6 +20,7 @@ describe('buildLoggerOptions', () => {
   it('redacta las cabeceras authorization y cookie en los logs', async () => {
     const { stream, output } = captureStream();
     const app = await buildApp({
+      auth: TEST_AUTH,
       prisma: fakePrisma(),
       logger: { ...buildLoggerOptions('production'), stream },
     });

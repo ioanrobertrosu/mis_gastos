@@ -39,3 +39,9 @@ export class RateLimitedError extends DomainError {
     super(429, 'RATE_LIMITED', message);
   }
 }
+
+export class UnauthorizedError extends DomainError {
+  constructor(message = 'Token de acceso ausente, inválido o caducado') {
+    super(401, 'UNAUTHORIZED', message);
+  }
+}

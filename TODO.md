@@ -120,11 +120,12 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 ## Fase 2 — Autenticación y usuarios
 
 ### 2.1 Validación de JWT
-- [ ] 🔴 Test: una petición sin `Authorization` a una ruta protegida devuelve `401`
-- [ ] 🔴 Test: un JWT con firma, `iss`, `aud` o `exp` inválidos devuelve `401`
-- [ ] 🔴 Test: un JWT válido expone `request.user` con `sub` y `email`
-- [ ] 🟢 Implementar el plugin `authenticate` (decorador `preHandler`)
-- [ ] Crear un helper de tests para firmar JWT de prueba
+- [x] 🔴 Test: una petición sin `Authorization` a una ruta protegida devuelve `401`
+- [x] 🔴 Test: un JWT con firma, `iss`, `aud` o `exp` inválidos devuelve `401`
+- [x] 🔴 Test: un JWT válido expone `request.user` con `sub` y `email`
+- [x] 🟢 Implementar el plugin `authenticate` (decorador `preHandler`)
+  - **Nota:** `jose` (`jwtVerify`, solo HS256, `iss`/`aud`/`exp`/`sub` obligatorios). `auth` es opción obligatoria de `buildApp` y el plugin se registra antes que cualquier ruta (un `preHandler` indefinido dejaría la ruta pública sin avisar).
+- [x] Crear un helper de tests para firmar JWT de prueba
 
 ### 2.2 Sincronización de usuario
 - [ ] Añadir el modelo `Identity` al esquema y migrar

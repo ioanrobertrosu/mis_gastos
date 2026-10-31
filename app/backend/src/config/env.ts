@@ -1,5 +1,12 @@
-import { type Static, Type } from '@sinclair/typebox';
+import { FormatRegistry, type Static, Type } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
+
+// `Value.Check` no trae formatos predefinidos (los de Fastify vienen de ajv-formats).
+FormatRegistry.Set('http-url', (value) => {
+  if (!URL.canParse(value)) return false;
+  const { protocol } = new URL(value);
+  return protocol === 'https:' || protocol === 'http:';
+});
 
 const EnvSchema = Type.Object({
   NODE_ENV: Type.Union(
@@ -10,6 +17,9 @@ const EnvSchema = Type.Object({
   PORT: Type.Integer({ minimum: 1, maximum: 65535, default: 3000 }),
   DATABASE_URL: Type.String({ minLength: 1 }),
   CORS_ORIGINS: Type.String({ default: '' }),
+  SUPABASE_JWT_SECRET: Type.String({ minLength: 32 }),
+  JWT_ISSUER: Type.String({ format: 'http-url' }),
+  JWT_AUDIENCE: Type.String({ minLength: 1, default: 'authenticated' }),
 });
 
 export type Env = Omit<Static<typeof EnvSchema>, 'CORS_ORIGINS'> & { CORS_ORIGINS: string[] };

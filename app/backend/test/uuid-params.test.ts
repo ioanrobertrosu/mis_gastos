@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { IdParamsSchema } from '../src/shared/schemas.js';
 import { fakePrisma } from './helpers/fake-prisma.js';
+import { TEST_AUTH } from './helpers/jwt.js';
 
 describe('esquema reutilizable de parámetros UUID', () => {
   let app: FastifyInstance;
@@ -11,7 +12,7 @@ describe('esquema reutilizable de parámetros UUID', () => {
 
   beforeEach(async () => {
     handler.mockClear();
-    app = await buildApp({ prisma });
+    app = await buildApp({ auth: TEST_AUTH, prisma });
     app.get('/items/:id', { schema: { params: IdParamsSchema } }, handler);
   });
 

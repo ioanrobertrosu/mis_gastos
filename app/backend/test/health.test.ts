@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { fakePrisma } from './helpers/fake-prisma.js';
+import { TEST_AUTH } from './helpers/jwt.js';
 
 describe('GET /health', () => {
   let app: FastifyInstance | undefined;
@@ -13,7 +14,7 @@ describe('GET /health', () => {
 
   it('responde 200 con db "up" cuando Prisma responde a SELECT 1', async () => {
     const prisma = fakePrisma();
-    app = await buildApp({ prisma });
+    app = await buildApp({ auth: TEST_AUTH, prisma });
 
     const response = await app.inject({ method: 'GET', url: '/health' });
 
@@ -26,7 +27,7 @@ describe('GET /health', () => {
     const prisma = fakePrisma(async () => {
       throw new Error('connection refused');
     });
-    app = await buildApp({ prisma });
+    app = await buildApp({ auth: TEST_AUTH, prisma });
 
     const response = await app.inject({ method: 'GET', url: '/health' });
 

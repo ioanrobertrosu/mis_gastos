@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { testPrisma } from '../helpers/db.js';
+import { TEST_AUTH } from '../helpers/jwt.js';
 
 const USER = { id: '123e4567-e89b-42d3-a456-426614174000', email: 'ana@example.com' };
 
 describe('BD de test', () => {
   it('/health informa db "up" contra la BD real de test', async () => {
-    const app = await buildApp({ prisma: testPrisma });
+    const app = await buildApp({ auth: TEST_AUTH, prisma: testPrisma });
     // La conexión compartida no debe cerrarse al cerrar la app del test.
     const response = await app.inject({ method: 'GET', url: '/health' });
 

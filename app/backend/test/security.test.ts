@@ -2,13 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp, type BuildAppOptions } from '../src/app.js';
 import { fakePrisma } from './helpers/fake-prisma.js';
+import { TEST_AUTH } from './helpers/jwt.js';
 
 const ALLOWED_ORIGIN = 'http://localhost:8081';
 
 let app: FastifyInstance | undefined;
 
 async function createApp(options: Partial<BuildAppOptions> = {}): Promise<FastifyInstance> {
-  app = await buildApp({ prisma: fakePrisma(), ...options });
+  app = await buildApp({ auth: TEST_AUTH, prisma: fakePrisma(), ...options });
   return app;
 }
 

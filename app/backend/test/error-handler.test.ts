@@ -8,6 +8,7 @@ import {
   NotFoundError,
 } from '../src/shared/errors.js';
 import { fakePrisma } from './helpers/fake-prisma.js';
+import { TEST_AUTH } from './helpers/jwt.js';
 
 let app: FastifyInstance | undefined;
 
@@ -15,7 +16,7 @@ async function appThrowing(
   error: unknown,
   options: Partial<BuildAppOptions> = {},
 ): Promise<FastifyInstance> {
-  app = await buildApp({ prisma: fakePrisma(), ...options });
+  app = await buildApp({ auth: TEST_AUTH, prisma: fakePrisma(), ...options });
   app.get('/boom', async () => {
     throw error;
   });
@@ -86,7 +87,7 @@ describe('manejador de errores', () => {
   });
 
   it('los errores de validación de esquema devuelven 400 con código VALIDATION_ERROR', async () => {
-    app = await buildApp({ prisma: fakePrisma() });
+    app = await buildApp({ auth: TEST_AUTH, prisma: fakePrisma() });
     app.post(
       '/echo',
       {
@@ -110,7 +111,7 @@ describe('manejador de errores', () => {
   });
 
   it('un body JSON mal formado devuelve 400 con el formato uniforme', async () => {
-    app = await buildApp({ prisma: fakePrisma() });
+    app = await buildApp({ auth: TEST_AUTH, prisma: fakePrisma() });
     app.post('/echo', async (request) => request.body);
 
     const response = await app.inject({
@@ -127,7 +128,7 @@ describe('manejador de errores', () => {
   });
 
   it('una ruta inexistente devuelve 404 con el formato uniforme', async () => {
-    app = await buildApp({ prisma: fakePrisma() });
+    app = await buildApp({ auth: TEST_AUTH, prisma: fakePrisma() });
 
     const response = await app.inject({ method: 'GET', url: '/no-existe' });
 

@@ -2,47 +2,91 @@ import { describe, expect, it } from 'vitest';
 import { loadEnv } from '../../src/config/env.js';
 
 const DATABASE_URL = 'postgresql://user:pass@localhost:5432/mis_gastos';
+const SUPABASE_JWT_SECRET = 'secreto-de-test-con-al-menos-32-caracteres';
+const JWT_ISSUER = 'https://test-project.supabase.co/auth/v1';
+
+/** Variables obligatorias mínimas para un entorno válido. */
+const REQUIRED = { DATABASE_URL, SUPABASE_JWT_SECRET, JWT_ISSUER };
+
+function without(key: keyof typeof REQUIRED): Record<string, string> {
+  const env: Record<string, string> = { ...REQUIRED };
+  delete env[key];
+  return env;
+}
 
 describe('loadEnv', () => {
   it('falla de forma explícita si falta DATABASE_URL', () => {
-    expect(() => loadEnv({})).toThrow(/DATABASE_URL/);
+    expect(() => loadEnv(without('DATABASE_URL'))).toThrow(/DATABASE_URL/);
   });
 
   it('trata una DATABASE_URL vacía como ausente', () => {
-    expect(() => loadEnv({ DATABASE_URL: '' })).toThrow(/DATABASE_URL/);
+    expect(() => loadEnv({ ...REQUIRED, DATABASE_URL: '' })).toThrow(/DATABASE_URL/);
   });
 
   it('aplica valores por defecto a las variables opcionales', () => {
-    expect(loadEnv({ DATABASE_URL })).toEqual({
+    expect(loadEnv(REQUIRED)).toEqual({
       NODE_ENV: 'development',
       HOST: '0.0.0.0',
       PORT: 3000,
       DATABASE_URL,
       CORS_ORIGINS: [],
+      SUPABASE_JWT_SECRET,
+      JWT_ISSUER,
+      JWT_AUDIENCE: 'authenticated',
     });
   });
 
   it('convierte CORS_ORIGINS (separado por comas) en una lista sin espacios ni vacíos', () => {
     expect(
-      loadEnv({ DATABASE_URL, CORS_ORIGINS: 'http://localhost:8081, https://app.example.com,' })
+      loadEnv({ ...REQUIRED, CORS_ORIGINS: 'http://localhost:8081, https://app.example.com,' })
         .CORS_ORIGINS,
     ).toEqual(['http://localhost:8081', 'https://app.example.com']);
   });
 
   it('convierte PORT a número', () => {
-    expect(loadEnv({ DATABASE_URL, PORT: '8080' }).PORT).toBe(8080);
+    expect(loadEnv({ ...REQUIRED, PORT: '8080' }).PORT).toBe(8080);
   });
 
   it('rechaza un PORT que no es un entero válido', () => {
-    expect(() => loadEnv({ DATABASE_URL, PORT: 'abc' })).toThrow(/PORT/);
-    expect(() => loadEnv({ DATABASE_URL, PORT: '70000' })).toThrow(/PORT/);
+    expect(() => loadEnv({ ...REQUIRED, PORT: 'abc' })).toThrow(/PORT/);
+    expect(() => loadEnv({ ...REQUIRED, PORT: '70000' })).toThrow(/PORT/);
   });
 
   it('rechaza un NODE_ENV desconocido', () => {
-    expect(() => loadEnv({ DATABASE_URL, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
+    expect(() => loadEnv({ ...REQUIRED, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
   });
 
   it('ignora variables que no forman parte del esquema', () => {
-    expect(loadEnv({ DATABASE_URL, PATH: '/usr/bin' })).not.toHaveProperty('PATH');
+    expect(loadEnv({ ...REQUIRED, PATH: '/usr/bin' })).not.toHaveProperty('PATH');
+  });
+
+  describe('autenticación', () => {
+    it('falla si falta SUPABASE_JWT_SECRET', () => {
+      expect(() => loadEnv(without('SUPABASE_JWT_SECRET'))).toThrow(/SUPABASE_JWT_SECRET/);
+    });
+
+    it('rechaza un SUPABASE_JWT_SECRET de menos de 32 caracteres', () => {
+      expect(() => loadEnv({ ...REQUIRED, SUPABASE_JWT_SECRET: 'corto' })).toThrow(
+        /SUPABASE_JWT_SECRET/,
+      );
+    });
+
+    it('falla si falta JWT_ISSUER', () => {
+      expect(() => loadEnv(without('JWT_ISSUER'))).toThrow(/JWT_ISSUER/);
+    });
+
+    it('rechaza un JWT_ISSUER que no es una URL', () => {
+      expect(() => loadEnv({ ...REQUIRED, JWT_ISSUER: 'no-es-una-url' })).toThrow(/JWT_ISSUER/);
+    });
+
+    it('rechaza un JWT_ISSUER que no es http(s)', () => {
+      expect(() => loadEnv({ ...REQUIRED, JWT_ISSUER: 'ftp://test-project.supabase.co' })).toThrow(
+        /JWT_ISSUER/,
+      );
+    });
+
+    it('respeta un JWT_AUDIENCE explícito', () => {
+      expect(loadEnv({ ...REQUIRED, JWT_AUDIENCE: 'otra' }).JWT_AUDIENCE).toBe('otra');
+    });
   });
 });
