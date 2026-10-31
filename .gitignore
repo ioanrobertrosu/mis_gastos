@@ -1,0 +1,17 @@
+# Secretos
+.env
+.env.*.local
+oauth/
+
+# Dependencias y artefactos
+node_modules/
+dist/
+coverage/
+.expo/
+
+# Cliente Prisma generado
+app/backend/src/generated/
+
+# SO / editores
+.DS_Store
+Thumbs.db

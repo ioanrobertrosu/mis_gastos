@@ -17,8 +17,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 ## Fase 0 — Saneamiento y decisiones previas
 
 ### 0.1 Configuración del repositorio
-- [ ] Corregir `.gitignore`: sustituir `.*` por entradas explícitas (`.env`, `.env.*.local`, `oauth/`, `node_modules/`, `dist/`, `coverage/`, `.expo/`) para no ignorar `.env.example`, `.agents/`, `.claude/`, `.github/`, `.dockerignore`
-- [ ] Verificar que `.env` y `oauth/*.plist` siguen fuera del control de versiones tras el cambio
+- [x] Corregir `.gitignore`: sustituir `.*` por entradas explícitas (`.env`, `.env.*.local`, `oauth/`, `node_modules/`, `dist/`, `coverage/`, `.expo/`) para no ignorar `.env.example`, `.agents/`, `.claude/`, `.github/`, `.dockerignore`
+- [x] Verificar que `.env` y `oauth/*.plist` siguen fuera del control de versiones tras el cambio
 - [ ] Versionar `.env.example`, `.agents/skills/` y `.claude/skills/` (si procede)
 - [ ] Corregir enlaces rotos de [rules/index.md](rules/index.md) (`rules/rules/...` → rutas relativas)
 - [ ] Actualizar `README.md` con nombre temporal, stack y enlaces a PRD / ONBOARDING / TODO
@@ -51,7 +51,7 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [ ] Reflejar la decisión de testing del frontend en la tabla de stack del [PRD.md](PRD.md) (fila *Testing*)
 
 ### 0.5 Correcciones al esquema del PRD
-- [ ] `User.id` sin `@default(uuid())`: se asigna explícitamente con el `sub` del JWT
+- [x] `User.id` sin `@default(uuid())`: se asigna explícitamente con el `sub` del JWT
 - [ ] `ActivityLog.userId` → `String?` (con `onDelete: SetNull` el campo debe ser opcional)
 - [ ] Añadir `Transaction.createdById` (+ relación con `User`) para la regla de LIMITED_EDITOR
 - [ ] Añadir tipo de transacción (`EXPENSE` / `INCOME`) o documentar la convención de signo del `amount`
@@ -67,24 +67,25 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 ## Fase 1 — Cimientos del backend (secuencia de [ONBOARDING.md](ONBOARDING.md))
 
 ### 1.1 Inicialización
-- [ ] Crear `app/backend` e inicializar `package.json` (`name: mis_gastos-backend`, `type: module`)
-- [ ] Instalar Fastify + TypeScript + `tsx`; configurar `tsconfig.json` en modo `strict`
-- [ ] Definir scripts: `dev`, `build`, `start`, `test`, `test:watch`, `test:coverage`, `lint`, `typecheck`
-- [ ] Configurar ESLint + Prettier
-- [ ] Estructura base: `src/app.ts` (factory `buildApp()`), `src/server.ts` (arranque), `src/config/`, `src/modules/`, `src/plugins/`
+- [x] Crear `app/backend` e inicializar `package.json` (`name: mis_gastos-backend`, `type: module`)
+- [x] Instalar Fastify + TypeScript + `tsx`; configurar `tsconfig.json` en modo `strict`
+- [x] Definir scripts: `dev`, `build`, `start`, `test`, `test:watch`, `test:coverage`, `lint`, `typecheck`
+- [x] Configurar ESLint + Prettier
+- [x] Estructura base: `src/app.ts` (factory `buildApp()`), `src/server.ts` (arranque), `src/config/`, `src/modules/`, `src/plugins/`
 
 ### 1.2 Base de datos
-- [ ] Instalar Prisma y `@prisma/client`; `prisma init`
-- [ ] Configurar `datasource` con `DATABASE_URL` y `directUrl = DIRECT_URL`
-- [ ] Trasladar **solo** el modelo `User` a `schema.prisma`
+- [x] Instalar Prisma y `@prisma/client`; `prisma init`
+- [x] Configurar `datasource` con `DATABASE_URL` y `directUrl = DIRECT_URL`
+  - **Nota:** Prisma 7 ya no admite `url`/`directUrl` en `schema.prisma`. `prisma.config.ts` usa `DIRECT_URL` (CLI/migraciones) y el cliente en runtime usará `DATABASE_URL` vía `@prisma/adapter-pg`. Generador `prisma-client` con salida en `src/generated/prisma`.
+- [x] Trasladar **solo** el modelo `User` a `schema.prisma`
 - [ ] Ejecutar la primera migración contra Supabase (`prisma migrate dev`)
 - [ ] Crear singleton del cliente Prisma como plugin de Fastify (`fastify.prisma`) con cierre en `onClose`
 
 ### 1.3 Testing — primer ciclo TDD
-- [ ] Instalar y configurar Vitest (`vitest.config.ts`, cobertura con `v8`)
-- [ ] 🔴 Test: `buildApp()` arranca y `GET /health` responde `200 { status: "ok" }` (vía `app.inject`)
-- [ ] ⏸️ Pausa: el usuario valida el estado Rojo
-- [ ] 🟢 Implementar `buildApp()` y la ruta `/health`
+- [x] Instalar y configurar Vitest (`vitest.config.ts`, cobertura con `v8`)
+- [x] 🔴 Test: `buildApp()` arranca y `GET /health` responde `200 { status: "ok" }` (vía `app.inject`)
+- [x] ⏸️ Pausa: el usuario valida el estado Rojo
+- [x] 🟢 Implementar `buildApp()` y la ruta `/health`
 - [ ] 🔴 Test: `/health` informa `db: "up"` cuando Prisma responde a `SELECT 1`
 - [ ] 🟢 Implementar la comprobación de BD en `/health`
 - [ ] 🔵 Refactor

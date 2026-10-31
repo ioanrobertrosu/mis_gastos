@@ -1,0 +1,21 @@
+// Las URLs de conexión se definen en prisma.config.ts (Prisma 7):
+// DIRECT_URL para migraciones y DATABASE_URL para el cliente en runtime.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  // Sin @default: se asigna explícitamente con el `sub` del JWT de Supabase.
+  id          String   @id
+  email       String   @unique
+  displayName String?
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+}
