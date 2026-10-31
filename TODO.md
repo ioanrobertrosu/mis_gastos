@@ -148,11 +148,12 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] Añadir `Budget`, `BudgetMember`, `OneTimeInvite` y enums `Role` / `Currency`; migrar
 
 ### 3.2 CRUD de presupuestos
-- [ ] 🔴 Test: `POST /budgets` crea el presupuesto y asigna al creador como `OWNER` (en una transacción)
-- [ ] 🔴 Test: un usuario con 3 presupuestos (propios o compartidos) recibe `409/422` al crear el 4.º
-- [ ] 🔴 Test: `GET /budgets` lista solo los presupuestos del usuario
-- [ ] 🔴 Test: `GET /budgets/:id` devuelve `404` si el usuario no es miembro (no revelar existencia)
-- [ ] 🟢 Implementar las rutas de lectura y creación de presupuestos
+- [x] 🔴 Test: `POST /budgets` crea el presupuesto y asigna al creador como `OWNER` (en una transacción)
+- [x] 🔴 Test: un usuario con 3 presupuestos (propios o compartidos) recibe `409/422` al crear el 4.º
+- [x] 🔴 Test: `GET /budgets` lista solo los presupuestos del usuario
+- [x] 🔴 Test: `GET /budgets/:id` devuelve `404` si el usuario no es miembro (no revelar existencia)
+- [x] 🟢 Implementar las rutas de lectura y creación de presupuestos
+  - **Nota:** límite de 3 → `422 LIMIT_EXCEEDED`. La creación bloquea la fila del `User` (`SELECT … FOR UPDATE`) dentro de la transacción para serializar creaciones simultáneas; el test de concurrencia falla si se quita el bloqueo.
 - [ ] 🔴 Test: solo OWNER puede `PATCH` (nombre, divisa) y `DELETE` del presupuesto
 - [ ] 🟢 Implementar la actualización y el borrado
 
