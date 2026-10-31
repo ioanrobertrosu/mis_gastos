@@ -1,0 +1,349 @@
+# TODO — Mis Gastos (`mis_gastos`)
+
+Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). Reglas obligatorias: [rules/index.md](rules/index.md) y [ONBOARDING.md](ONBOARDING.md).
+
+## Cómo usar este archivo
+
+- Marca cada tarea con `[x]` **en el mismo commit** en que se completa.
+- Las fases están ordenadas por dependencia: no empieces una fase sin cerrar (o descartar explícitamente) la anterior.
+- Toda lógica de negocio sigue el ciclo TDD ([rules/tdd-and-workflow.md](rules/tdd-and-workflow.md)):
+  - 🔴 **Rojo** — escribir el test que falla. **Pausa obligatoria**: el usuario valida el rojo antes de seguir.
+  - 🟢 **Verde** — código mínimo de producción para pasarlo.
+  - 🔵 **Refactor** — limpiar sin cambiar comportamiento (tests en verde).
+- Las tareas marcadas con ❓ son decisiones que hay que tomar antes de implementar lo que depende de ellas. Anota la decisión debajo de la tarea al cerrarla.
+
+---
+
+## Fase 0 — Saneamiento y decisiones previas
+
+### 0.1 Configuración del repositorio
+- [ ] Corregir `.gitignore`: sustituir `.*` por entradas explícitas (`.env`, `.env.*.local`, `oauth/`, `node_modules/`, `dist/`, `coverage/`, `.expo/`) para no ignorar `.env.example`, `.agents/`, `.claude/`, `.github/`, `.dockerignore`
+- [ ] Verificar que `.env` y `oauth/*.plist` siguen fuera del control de versiones tras el cambio
+- [ ] Versionar `.env.example`, `.agents/skills/` y `.claude/skills/` (si procede)
+- [ ] Corregir enlaces rotos de [rules/index.md](rules/index.md) (`rules/rules/...` → rutas relativas)
+- [ ] Actualizar `README.md` con nombre temporal, stack y enlaces a PRD / ONBOARDING / TODO
+
+### 0.2 Variables de entorno
+- [ ] Unificar nombres entre `.env`, `.env.example`, `docker-compose.yml` y PRD (`DATABASE_URL`/`DIRECT_URL` vs `SUPABASE_DATABASE_URL`/`SUPABASE_DIRECT_URL`)
+- [ ] Añadir a `.env.example`: `JWT_ISSUER`, `JWT_AUDIENCE`, `SUPABASE_CALLBACK_SIGNIN_URL`
+- [ ] Añadir `?pgbouncer=true` (y `connection_limit` adecuado) a la URL del transaction pooler para Prisma
+- [ ] Separar variables de backend y de cliente (las del cliente con prefijo `EXPO_PUBLIC_`; los `CLIENT_SECRET` nunca en el cliente)
+
+### 0.3 Docker Compose
+- [ ] Pasar al servicio `api` todas las variables necesarias (`DATABASE_URL`, `DIRECT_URL`, `SUPABASE_JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `PORT`, `NODE_ENV`)
+- [ ] Separar entornos: `docker-compose.yml` (prod) + `docker-compose.override.yml` (dev con volumen `./app/backend/src` y `npm run dev`)
+- [ ] Eliminar la clave obsoleta `version: '3.8'`
+- [ ] Añadir `healthcheck` del servicio apuntando a `GET /health`
+
+### 0.4 Decisiones de diseño (❓)
+- [x] ❓ Validación: **TypeBox** (nativo Fastify) o **Zod** → elegir una y documentarla en [rules/backend-and-db.md](rules/backend-and-db.md)
+  - **Decisión:** TypeBox (`@sinclair/typebox` + `@fastify/type-provider-typebox`).
+- [x] ❓ Verificación de JWT de Supabase: secreto HS256 (`SUPABASE_JWT_SECRET`) o claves asimétricas vía JWKS (proyectos nuevos de Supabase)
+  - **Decisión:** secreto HS256 (`SUPABASE_JWT_SECRET`) por ahora. Encapsular la verificación en un único plugin para facilitar la migración futura a JWKS (ver Fase 8).
+- [x] ❓ Relación `User.id` ↔ `auth.users.id` de Supabase (reutilizar el `sub` del JWT como `User.id` o mapear vía `Identity`)
+  - **Decisión:** `User.id = sub` del JWT. `Identity` queda como registro informativo de los proveedores vinculados (Google, Apple…).
+- [x] ❓ Testing en frontend: Vitest + RNTL (soporte limitado en RN) o `jest-expo` + RNTL solo para el cliente
+  - **Decisión:** `jest-expo` + RNTL en el frontend; Vitest se mantiene en el backend.
+- [x] ❓ Estructura de repo: carpetas independientes (`app/backend`, `app/frontend`) o monorepo con workspaces y paquete compartido de tipos
+  - **Decisión:** carpetas independientes `app/backend` y `app/frontend` (sin workspaces); el backend se despliega dockerizado en un servidor propio. Expo Router crea su propia carpeta de rutas, por lo que quedará `app/frontend/app/`.
+- [x] ❓ Versión de NativeWind compatible con Tailwind v4 y con el SDK de Expo elegido
+  - **Decisión:** usar la versión de NativeWind compatible con Tailwind v4 (v5). Verificar su estabilidad y el SDK de Expo compatible al iniciar la Fase 9.
+- [ ] Reflejar la decisión de testing del frontend en la tabla de stack del [PRD.md](PRD.md) (fila *Testing*)
+
+### 0.5 Correcciones al esquema del PRD
+- [ ] `User.id` sin `@default(uuid())`: se asigna explícitamente con el `sub` del JWT
+- [ ] `ActivityLog.userId` → `String?` (con `onDelete: SetNull` el campo debe ser opcional)
+- [ ] Añadir `Transaction.createdById` (+ relación con `User`) para la regla de LIMITED_EDITOR
+- [ ] Añadir tipo de transacción (`EXPENSE` / `INCOME`) o documentar la convención de signo del `amount`
+- [ ] Añadir a `User` un marcador de borrado lógico (`deletedAt`) y anonimizar también `email` (es `@unique`)
+- [ ] Añadir `createdAt` a `Transaction` (distinto de `date`, necesario para cursores estables)
+- [ ] Añadir índices sobre FKs sin indexar (`BudgetMember.budgetId`, `Category.budgetId`, `Goal.budgetId`, `GoalContribution.goalId`, `Identity.userId`)
+- [ ] Índice compuesto para paginación: `Transaction(categoryId, date DESC, id)` y `ActivityLog(budgetId, createdAt DESC, id)`
+- [ ] Revisar `OneTimeInvite`: `@@index([token])` es redundante con `@unique`; añadir `createdById`
+- [ ] Reflejar todos los cambios en la sección 4 del [PRD.md](PRD.md)
+
+---
+
+## Fase 1 — Cimientos del backend (secuencia de [ONBOARDING.md](ONBOARDING.md))
+
+### 1.1 Inicialización
+- [ ] Crear `app/backend` e inicializar `package.json` (`name: mis_gastos-backend`, `type: module`)
+- [ ] Instalar Fastify + TypeScript + `tsx`; configurar `tsconfig.json` en modo `strict`
+- [ ] Definir scripts: `dev`, `build`, `start`, `test`, `test:watch`, `test:coverage`, `lint`, `typecheck`
+- [ ] Configurar ESLint + Prettier
+- [ ] Estructura base: `src/app.ts` (factory `buildApp()`), `src/server.ts` (arranque), `src/config/`, `src/modules/`, `src/plugins/`
+
+### 1.2 Base de datos
+- [ ] Instalar Prisma y `@prisma/client`; `prisma init`
+- [ ] Configurar `datasource` con `DATABASE_URL` y `directUrl = DIRECT_URL`
+- [ ] Trasladar **solo** el modelo `User` a `schema.prisma`
+- [ ] Ejecutar la primera migración contra Supabase (`prisma migrate dev`)
+- [ ] Crear singleton del cliente Prisma como plugin de Fastify (`fastify.prisma`) con cierre en `onClose`
+
+### 1.3 Testing — primer ciclo TDD
+- [ ] Instalar y configurar Vitest (`vitest.config.ts`, cobertura con `v8`)
+- [ ] 🔴 Test: `buildApp()` arranca y `GET /health` responde `200 { status: "ok" }` (vía `app.inject`)
+- [ ] ⏸️ Pausa: el usuario valida el estado Rojo
+- [ ] 🟢 Implementar `buildApp()` y la ruta `/health`
+- [ ] 🔴 Test: `/health` informa `db: "up"` cuando Prisma responde a `SELECT 1`
+- [ ] 🟢 Implementar la comprobación de BD en `/health`
+- [ ] 🔵 Refactor
+
+### 1.4 Configuración y entorno
+- [ ] 🔴 Test: el cargador de configuración falla de forma explícita si falta una variable obligatoria
+- [ ] 🟢 Implementar `src/config/env.ts` validado con el esquema elegido
+- [ ] Configurar una BD de test aislada (schema separado o proyecto Supabase de test) y `setup` de Vitest que limpie datos entre tests
+
+### 1.5 Contenedorización
+- [ ] Crear `app/backend/Dockerfile` multi-stage (deps → build → runtime con `node:lts-alpine`, usuario no root)
+- [ ] Crear `app/backend/.dockerignore`
+- [ ] Actualizar `build.context` de `docker-compose.yml` a `./app/backend`
+- [ ] Ejecutar `prisma generate` dentro de la imagen
+- [ ] Verificar `docker compose up` y `GET /health` desde el host
+
+### 1.6 Base transversal de la API
+- [ ] Prefijo global de rutas `/api/v1`
+- [ ] 🔴 Test: el manejador de errores devuelve un formato uniforme `{ error: { code, message } }` y no filtra stack traces en producción
+- [ ] 🟢 Implementar `setErrorHandler` y errores de dominio tipados (`NotFound`, `Forbidden`, `Conflict`, `LimitExceeded`)
+- [ ] 🔴 Test: un parámetro `:id` que no es UUID devuelve `400` sin llegar a Prisma
+- [ ] 🟢 Implementar un esquema reutilizable de parámetros UUID
+- [ ] Logger Pino configurado (JSON en prod, `pino-pretty` en dev, redacción de `authorization`)
+- [ ] CORS y `@fastify/helmet` configurados
+- [ ] `@fastify/rate-limit` en rutas públicas y de invitación
+
+---
+
+## Fase 2 — Autenticación y usuarios
+
+### 2.1 Validación de JWT
+- [ ] 🔴 Test: una petición sin `Authorization` a una ruta protegida devuelve `401`
+- [ ] 🔴 Test: un JWT con firma, `iss`, `aud` o `exp` inválidos devuelve `401`
+- [ ] 🔴 Test: un JWT válido expone `request.user` con `sub` y `email`
+- [ ] 🟢 Implementar el plugin `authenticate` (decorador `preHandler`)
+- [ ] Crear un helper de tests para firmar JWT de prueba
+
+### 2.2 Sincronización de usuario
+- [ ] Añadir el modelo `Identity` al esquema y migrar
+- [ ] 🔴 Test: el primer acceso con un JWT nuevo crea `User` con `id = sub` + `Identity` (provider leído de `app_metadata.provider`)
+- [ ] 🔴 Test: accesos posteriores reutilizan el mismo `User` (idempotente, sin duplicados)
+- [ ] 🟢 Implementar el upsert de usuario en el hook de autenticación
+- [ ] 🔵 Refactor
+
+### 2.3 Perfil
+- [ ] 🔴 Test: `GET /api/v1/me` devuelve el perfil y las membresías
+- [ ] 🔴 Test: `PATCH /api/v1/me` actualiza `displayName`/`avatarUrl` y rechaza campos no permitidos
+- [ ] 🟢 Implementar las rutas `/me`
+
+---
+
+## Fase 3 — Presupuestos, miembros, roles e invitaciones
+
+### 3.1 Esquema
+- [ ] Añadir `Budget`, `BudgetMember`, `OneTimeInvite` y enums `Role` / `Currency`; migrar
+
+### 3.2 CRUD de presupuestos
+- [ ] 🔴 Test: `POST /budgets` crea el presupuesto y asigna al creador como `OWNER` (en una transacción)
+- [ ] 🔴 Test: un usuario con 3 presupuestos (propios o compartidos) recibe `409/422` al crear el 4.º
+- [ ] 🔴 Test: `GET /budgets` lista solo los presupuestos del usuario
+- [ ] 🔴 Test: `GET /budgets/:id` devuelve `404` si el usuario no es miembro (no revelar existencia)
+- [ ] 🟢 Implementar las rutas de lectura y creación de presupuestos
+- [ ] 🔴 Test: solo OWNER puede `PATCH` (nombre, divisa) y `DELETE` del presupuesto
+- [ ] 🟢 Implementar la actualización y el borrado
+
+### 3.3 Autorización por rol
+- [ ] 🔴 Tests de la matriz de permisos (OWNER / EDITOR / LIMITED_EDITOR / VIEWER × acción)
+- [ ] 🟢 Implementar `requireRole(budgetId, roles[])` como `preHandler` reutilizable
+- [ ] 🔵 Refactor: centralizar la matriz de permisos en un único módulo
+
+### 3.4 Invitaciones
+- [ ] 🔴 Test: OWNER genera una invitación de un solo uso con rol y `expiresAt`
+- [ ] 🔴 Test: aceptar una invitación válida crea `BudgetMember` y la marca `isUsed`
+- [ ] 🔴 Test: una invitación caducada o usada devuelve error
+- [ ] 🔴 Test: no se puede aceptar si el presupuesto ya tiene 4 miembros
+- [ ] 🔴 Test: no se puede aceptar si el usuario ya tiene 3 presupuestos
+- [ ] 🔴 Test: aceptar dos veces en concurrencia solo crea una membresía (bloqueo / `UPDATE ... WHERE isUsed = false`)
+- [ ] 🟢 Implementar la creación, aceptación y revocación de invitaciones
+
+### 3.5 Gestión de miembros
+- [ ] 🔴 Test: OWNER cambia el rol de un miembro (no puede degradarse a sí mismo sin transferir)
+- [ ] 🔴 Test: OWNER expulsa a un miembro
+- [ ] 🔴 Test: un miembro no OWNER puede abandonar el presupuesto
+- [ ] 🟢 Implementar las rutas de miembros
+
+### 3.6 Transferencia de propiedad y offboarding
+- [ ] 🔴 Test: OWNER no puede abandonar sin transferir la propiedad antes
+- [ ] 🔴 Test: la transferencia manual de propiedad intercambia los roles de forma atómica
+- [ ] 🟢 Implementar la transferencia de propiedad
+- [ ] 🔴 Test: al borrar la cuenta, el OWNER pasa al miembro con `joinedAt` más antiguo
+- [ ] 🔴 Test: al borrar la cuenta siendo el único miembro, el presupuesto se elimina en cascada
+- [ ] 🔴 Test: el borrado de usuario anonimiza (`displayName = "Usuario Eliminado"`) y preserva transacciones y contribuciones
+- [ ] 🟢 Implementar `DELETE /me` con el fallback de propiedad y el soft delete
+- [ ] Revocar la sesión / eliminar el usuario en Supabase Auth tras el borrado
+
+---
+
+## Fase 4 — Categorías y transacciones
+
+### 4.1 Categorías
+- [ ] Añadir el modelo `Category` y migrar
+- [ ] 🔴 Test: OWNER crea una categoría con `monthlyLimit`, `icon` y `colorHex` validados (hex válido, límite ≥ 0)
+- [ ] 🔴 Test: roles distintos de OWNER no pueden crear, editar ni borrar categorías
+- [ ] 🔴 Test: el borrado es soft delete (`isActive = false`) y las inactivas no se listan por defecto
+- [ ] 🟢 Implementar el CRUD de categorías
+- [ ] 🔴 Test: el listado incluye el gasto acumulado del mes actual y el porcentaje consumido
+- [ ] 🟢 Implementar la agregación mensual por categoría
+
+### 4.2 Transacciones
+- [ ] Añadir el modelo `Transaction` (con `createdById` y tipo) y migrar
+- [ ] 🔴 Test: OWNER/EDITOR/LIMITED_EDITOR pueden crear transacciones; VIEWER recibe `403`
+- [ ] 🔴 Test: LIMITED_EDITOR solo edita/borra sus propias transacciones
+- [ ] 🔴 Test: no se puede crear una transacción en una categoría inactiva o de otro presupuesto
+- [ ] 🔴 Test: los importes se validan como decimales con 2 decimales como máximo (sin floats)
+- [ ] 🟢 Implementar el CRUD de transacciones
+- [ ] 🔴 Test: paginación por cursor (`limit` 20 por defecto, `nextCursor`, orden estable `date DESC, id DESC`)
+- [ ] 🔴 Test: filtros por categoría y rango de fechas
+- [ ] 🟢 Implementar el listado paginado
+- [x] ❓ Definir el comportamiento de `isRecurring` (plantilla + generación mensual o solo marca informativa)
+  - **Decisión:** solo marca informativa. Las transacciones recurrentes se registran a mano cada mes, porque el importe real puede diferir del previsto (ej. 400 € presupuestados → 300 € pagados).
+- [ ] 🔴 Test: `isRecurring` se acepta al crear/editar y el listado permite filtrar por él
+- [ ] 🟢 Implementar el campo y el filtro `isRecurring`
+
+### 4.3 Resumen del presupuesto
+- [ ] 🔴 Test: `GET /budgets/:id/summary?month=YYYY-MM` devuelve el asignado, el gastado y el restante (base cero)
+- [ ] 🟢 Implementar el resumen
+
+---
+
+## Fase 5 — Metas de ahorro
+
+- [ ] Añadir `Goal`, `GoalContribution` y el enum `GoalStatus`; migrar
+- [ ] 🔴 Test: OWNER/EDITOR crean, editan y borran metas; LIMITED_EDITOR y VIEWER no
+- [ ] 🟢 Implementar el CRUD de metas
+- [ ] 🔴 Test: una contribución incrementa `currentAmount` de forma atómica (`increment` en transacción)
+- [ ] 🔴 Test: contribuciones concurrentes no pierden actualizaciones
+- [ ] 🔴 Test: al alcanzar `targetAmount` el estado pasa a `REACHED`
+- [ ] 🔴 Test: no se admiten contribuciones a metas `ARCHIVED`
+- [ ] 🟢 Implementar las contribuciones
+- [ ] 🔴 Test: listado de contribuciones por meta con autor (anonimizado si el usuario fue borrado)
+- [ ] 🟢 Implementar el listado
+
+---
+
+## Fase 6 — Actividad, alertas y exportación
+
+### 6.1 ActivityLog
+- [ ] Añadir el modelo `ActivityLog` y migrar
+- [ ] Definir el catálogo de acciones como enum/constantes (`MEMBER_JOINED`, `CATEGORY_LIMIT_UPDATED`, `GOAL_REACHED`, `TRANSACTION_CREATED`, …)
+- [ ] 🔴 Test: cada mutación relevante registra su actividad dentro de la misma transacción de BD
+- [ ] 🟢 Implementar el servicio `logActivity` e integrarlo en los módulos existentes
+- [ ] 🔴 Test: `GET /budgets/:id/activity` paginado por cursor
+- [ ] 🟢 Implementar el muro de actividad
+
+### 6.2 Alertas inteligentes
+- [ ] 🔴 Test: se genera la alerta `CATEGORY_90_PERCENT` al superar el 90 % del límite (una sola vez por mes y categoría)
+- [ ] 🔴 Test: alerta al exceder el 100 %, al alcanzar una meta y al unirse un miembro
+- [ ] 🟢 Implementar la detección de hitos
+
+### 6.3 Exportación CSV
+- [ ] 🔴 Test: `GET /api/v1/budgets/:id/export?from&to` devuelve `text/csv` con cabeceras y filas correctas
+- [ ] 🔴 Test: el CSV escapa comas, comillas y saltos de línea; protege contra inyección de fórmulas (`=`, `+`, `-`, `@`)
+- [ ] 🔴 Test: solo los miembros del presupuesto pueden exportar; rango de fechas obligatorio y validado
+- [ ] 🟢 Implementar la exportación en streaming
+
+---
+
+## Fase 7 — Tiempo real (WebSocket)
+
+- [ ] Instalar `@fastify/websocket`
+- [ ] 🔴 Test: la conexión WSS sin JWT válido se rechaza
+- [ ] 🔴 Test: el cliente solo puede suscribirse a presupuestos de los que es miembro
+- [ ] 🟢 Implementar la autenticación del handshake y las salas por `budgetId`
+- [ ] 🔴 Test: tras una mutación, los demás clientes del presupuesto reciben un evento ligero `{ type, budgetId, entity, id }` (sin payload completo)
+- [ ] 🟢 Implementar el emisor de eventos de dominio → broadcast
+- [ ] 🔴 Test: un miembro expulsado deja de recibir eventos inmediatamente
+- [ ] 🟢 Implementar la desuscripción al perder la membresía
+- [ ] Heartbeat ping/pong y limpieza de conexiones muertas
+
+---
+
+## Fase 8 — Observabilidad y endurecimiento del backend
+
+- [ ] Integrar Sentry en el backend (`@sentry/node`) con release y entorno
+- [ ] (Futuro) Migrar la verificación de JWT de HS256 a claves asimétricas vía JWKS
+- [ ] Añadir `requestId` / correlación en los logs de Pino
+- [ ] Documentación OpenAPI (`@fastify/swagger` + UI solo en dev)
+- [ ] Umbral mínimo de cobertura en Vitest (p. ej. 80 %) y que falle el CI si no se alcanza
+- [ ] Revisión de seguridad: rate limits, tamaño máximo de body, cabeceras, secretos fuera de los logs
+- [ ] Revisar consultas N+1 y planes `EXPLAIN` de los listados paginados
+- [ ] Pipeline de CI (GitHub Actions): lint → typecheck → test → build de la imagen Docker
+- [ ] Definir el destino de despliegue del contenedor en producción
+
+---
+
+## Fase 9 — Cimientos del frontend (Expo)
+
+> Bloqueada por ONBOARDING hasta nuevo aviso. Requiere cerrar las decisiones ❓ de la Fase 0.
+
+### 9.1 Proyecto
+- [ ] Crear la app Expo con Expo Router (`app/frontend`, slug `mis_gastos`, nombre visible "Mis Gastos")
+- [ ] Configurar TypeScript estricto, ESLint y alias de imports
+- [ ] Definir la estructura de carpetas (skill `expo-project-structure`)
+- [ ] Configurar el runner de tests elegido + RNTL
+
+### 9.2 Design system
+- [ ] Instalar y configurar NativeWind + Tailwind v4
+- [ ] Definir tokens: escala de grises, esmeralda, ámbar y carmesí; espaciado, radios y tipografía
+- [ ] Modo oscuro con `dark:` y preferencia System / Dark / Light (persistida solo como preferencia de UI)
+- [ ] Componentes base: `Screen` (con `SafeAreaView`), `Button`, `Text`, `Card`, `MoneyInput` (`keyboardType="decimal-pad"`), `Amount` (con soporte de blur)
+- [ ] Iconos con `lucide-react-native`
+- [ ] Wrapper de haptics (`expo-haptics`)
+
+### 9.3 Datos y estado
+- [ ] Cliente HTTP tipado que inyecta el JWT de Supabase
+- [ ] `QueryClientProvider` y convención de `queryKeys`
+- [ ] Store de Zustand solo para UI efímera (modo blur, filtros, modales)
+- [ ] Cliente WebSocket con reconexión que dispara `invalidateQueries`
+
+### 9.4 Autenticación
+- [ ] Integrar `@supabase/supabase-js` con almacenamiento seguro de sesión (`expo-secure-store`)
+- [ ] Login con Google OAuth (Web, Android, iOS) usando los client IDs de `.env`
+- [ ] Configurar deep links / scheme y la URL de callback en Supabase
+- [ ] Guardas de rutas autenticadas en Expo Router
+
+---
+
+## Fase 10 — Funcionalidades del frontend
+
+- [ ] Pantalla de onboarding / login
+- [ ] Selector de presupuestos (máx. 3) y creación de presupuesto
+- [ ] Dashboard del presupuesto: resumen mensual y barras por categoría con colores semánticos
+- [ ] Gestión de categorías (solo OWNER)
+- [ ] Lista de transacciones con infinite scroll (`useInfiniteQuery`) y filtros
+- [ ] Formulario de transacción con teclado decimal y haptics al confirmar
+- [ ] Metas: listado, detalle, contribuciones y celebración (haptics) al alcanzarlas
+- [ ] Muro de actividad paginado y destacado de alertas
+- [ ] Invitaciones: generar/compartir enlace y aceptar vía deep link
+- [ ] Gestión de miembros y roles (solo OWNER) y transferencia de propiedad
+- [ ] Modo blur global de importes
+- [ ] Ajustes de cuenta: `displayName`, avatar, tema, identidades vinculadas, borrar cuenta
+- [ ] Ajustes del presupuesto: divisa (solo OWNER) y exportación CSV
+- [ ] Actualizaciones optimistas en las mutaciones clave
+- [ ] Estados de carga, vacío y error en todas las pantallas
+- [ ] Integrar Sentry en el cliente (`@sentry/react-native`)
+- [ ] Auditoría de accesibilidad y UI (skill `web-design-guidelines` en web)
+
+---
+
+## Fase 11 — Empaquetado y distribución (EAS)
+
+- [ ] `eas init` y vinculación del proyecto
+- [ ] Crear `eas.json` con los perfiles `development`, `preview` y `production`
+- [ ] Variables de entorno por perfil (backend/Supabase de test vs producción)
+- [ ] Generar el SHA-1 con `eas credentials` y registrarlo en el OAuth client de Android
+- [ ] Build de Development Client
+- [ ] Build `.apk` (preview) para testing interno
+- [ ] Build Simulator de iOS
+- [ ] Build `.aab` firmado para Google Play
+- [ ] Build `.ipa` firmado para TestFlight (requiere Apple Developer Program)
+- [ ] Build y despliegue de la versión web
+- [ ] Automatizar las builds de producción desde CI
