@@ -94,7 +94,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 ### 1.4 Configuración y entorno
 - [x] 🔴 Test: el cargador de configuración falla de forma explícita si falta una variable obligatoria
 - [x] 🟢 Implementar `src/config/env.ts` validado con el esquema elegido
-- [ ] Configurar una BD de test aislada (schema separado o proyecto Supabase de test) y `setup` de Vitest que limpie datos entre tests
+- [x] Configurar una BD de test aislada (schema separado o proyecto Supabase de test) y `setup` de Vitest que limpie datos entre tests
+  - **Decisión:** proyecto Supabase de test independiente (`TEST_DATABASE_URL` / `TEST_DIRECT_URL`). Vitest separa los proyectos `unit` e `integration` (`*.int.test.ts`); la integración aplica `prisma migrate deploy`, trunca las tablas antes de cada test y ejecuta los ficheros en serie.
 
 ### 1.5 Contenedorización
 - [x] Crear `app/backend/Dockerfile` multi-stage (deps → build → runtime con `node:lts-alpine`, usuario no root)
