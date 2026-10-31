@@ -1,20 +1,18 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { buildApp } from './app.js';
+import { loadEnv } from './config/env.js';
 import { PrismaClient } from './generated/prisma/client.js';
 
-// La validación estricta de variables de entorno llegará con src/config/env.ts (TODO 1.4).
-const port = Number(process.env.PORT ?? 3000);
-const host = process.env.HOST ?? '0.0.0.0';
-const isDev = process.env.NODE_ENV !== 'production';
+const env = loadEnv();
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
 });
 
 const app = await buildApp({
   prisma,
-  logger: isDev ? { transport: { target: 'pino-pretty' } } : true,
+  logger: env.NODE_ENV === 'production' ? true : { transport: { target: 'pino-pretty' } },
 });
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
@@ -25,7 +23,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 }
 
 try {
-  await app.listen({ port, host });
+  await app.listen({ port: env.PORT, host: env.HOST });
 } catch (error) {
   app.log.error(error);
   process.exit(1);

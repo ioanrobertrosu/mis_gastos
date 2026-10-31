@@ -91,8 +91,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔵 Refactor
 
 ### 1.4 Configuración y entorno
-- [ ] 🔴 Test: el cargador de configuración falla de forma explícita si falta una variable obligatoria
-- [ ] 🟢 Implementar `src/config/env.ts` validado con el esquema elegido
+- [x] 🔴 Test: el cargador de configuración falla de forma explícita si falta una variable obligatoria
+- [x] 🟢 Implementar `src/config/env.ts` validado con el esquema elegido
 - [ ] Configurar una BD de test aislada (schema separado o proyecto Supabase de test) y `setup` de Vitest que limpie datos entre tests
 
 ### 1.5 Contenedorización
