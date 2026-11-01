@@ -31,11 +31,11 @@ enum Currency {
 
 model User {
   // Sin @default: se asigna explícitamente con el `sub` del JWT de Supabase.
-  id          String   @id
-  email       String   @unique
+  id          String    @id
+  email       String    @unique
   displayName String?
   avatarUrl   String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   // Soft delete: la fila se conserva anonimizada para no romper el historial de sus movimientos.
   deletedAt   DateTime?
 
@@ -67,6 +67,24 @@ model Budget {
 
   members     BudgetMember[]
   invitations OneTimeInvite[]
+  categories  Category[]
+}
+
+model Category {
+  id           String   @id @default(uuid())
+  budgetId     String
+  name         String
+  monthlyLimit Decimal  @db.Decimal(12, 2)
+  icon         String   @default("folder")
+  colorHex     String   @default("#64748B")
+  // Soft delete: las transacciones de una categoría desactivada se conservan.
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@index([budgetId])
 }
 
 model BudgetMember {
