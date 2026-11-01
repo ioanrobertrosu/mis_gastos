@@ -1,5 +1,6 @@
 import type { Currency, Prisma, PrismaClient, Role } from '../../generated/prisma/client.js';
 import { LimitExceededError } from '../../shared/errors.js';
+import { LOCKING_TRANSACTION } from '../../shared/transactions.js';
 import { budgetNotFound } from './errors.js';
 import { MAX_BUDGETS_PER_USER } from './limits.js';
 
@@ -70,7 +71,7 @@ export async function createBudget(
         select: membershipSelect,
       }),
     );
-  });
+  }, LOCKING_TRANSACTION);
 }
 
 export async function listBudgets(prisma: PrismaClient, userId: string): Promise<BudgetView[]> {

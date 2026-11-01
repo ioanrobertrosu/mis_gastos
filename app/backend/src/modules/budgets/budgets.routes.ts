@@ -9,7 +9,7 @@ import {
   updateBudget,
 } from './budgets.service.js';
 
-const BudgetSchema = Type.Object({
+export const BudgetSchema = Type.Object({
   id: Type.String(),
   name: Type.String(),
   currency: Type.Enum(Currency),

@@ -16,6 +16,14 @@ export const CARLOS: TestUser = {
   sub: '7e6d5c4b-3a29-4810-8f7e-6d5c4b3a2918',
   email: 'carlos@example.com',
 };
+export const DANI: TestUser = {
+  sub: '4b3a2918-0f7e-4d5c-8b3a-29180f7e6d5c',
+  email: 'dani@example.com',
+};
+export const EVA: TestUser = {
+  sub: '8f7e6d5c-4b3a-4291-80f7-e6d5c4b3a291',
+  email: 'eva@example.com',
+};
 
 /** Cabecera `Authorization` para el usuario (cada uno con su propio `provider_id`). */
 export async function authHeader(user: TestUser): Promise<{ authorization: string }> {
@@ -29,10 +37,10 @@ export async function authHeader(user: TestUser): Promise<{ authorization: strin
 
 /** Crea el usuario directamente en la BD de test (sin pasar por la API). */
 export async function seedUser(user: TestUser): Promise<void> {
-  await testPrisma.user.upsert({
-    where: { id: user.sub },
-    create: { id: user.sub, email: user.email },
-    update: {},
+  // Un único INSERT … ON CONFLICT DO NOTHING: `upsert` abre una transacción implícita.
+  await testPrisma.user.createMany({
+    data: [{ id: user.sub, email: user.email }],
+    skipDuplicates: true,
   });
 }
 

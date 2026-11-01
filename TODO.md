@@ -164,13 +164,14 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔵 Refactor: centralizar la matriz de permisos en un único módulo
 
 ### 3.4 Invitaciones
-- [ ] 🔴 Test: OWNER genera una invitación de un solo uso con rol y `expiresAt`
-- [ ] 🔴 Test: aceptar una invitación válida crea `BudgetMember` y la marca `isUsed`
-- [ ] 🔴 Test: una invitación caducada o usada devuelve error
-- [ ] 🔴 Test: no se puede aceptar si el presupuesto ya tiene 4 miembros
-- [ ] 🔴 Test: no se puede aceptar si el usuario ya tiene 3 presupuestos
-- [ ] 🔴 Test: aceptar dos veces en concurrencia solo crea una membresía (bloqueo / `UPDATE ... WHERE isUsed = false`)
-- [ ] 🟢 Implementar la creación, aceptación y revocación de invitaciones
+- [x] 🔴 Test: OWNER genera una invitación de un solo uso con rol y `expiresAt`
+- [x] 🔴 Test: aceptar una invitación válida crea `BudgetMember` y la marca `isUsed`
+- [x] 🔴 Test: una invitación caducada o usada devuelve error
+- [x] 🔴 Test: no se puede aceptar si el presupuesto ya tiene 4 miembros
+- [x] 🔴 Test: no se puede aceptar si el usuario ya tiene 3 presupuestos
+- [x] 🔴 Test: aceptar dos veces en concurrencia solo crea una membresía (bloqueo / `UPDATE ... WHERE isUsed = false`)
+- [x] 🟢 Implementar la creación, aceptación y revocación de invitaciones
+  - **Nota:** usada/caducada → `410` (`INVITATION_USED` / `INVITATION_EXPIRED`); no se puede invitar como OWNER; caducidad 1–168 h (48 h por defecto); el límite de 4 miembros se comprueba al aceptar. Aceptación en una transacción con bloqueos invitación → presupuesto → usuario y `LOCKING_TRANSACTION` (maxWait 10 s, timeout 15 s). Ruta de aceptación con rate limit (10/min por IP).
 
 ### 3.5 Gestión de miembros
 - [ ] 🔴 Test: OWNER cambia el rol de un miembro (no puede degradarse a sí mismo sin transferir)

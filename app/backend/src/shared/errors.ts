@@ -45,3 +45,10 @@ export class UnauthorizedError extends DomainError {
     super(401, 'UNAUTHORIZED', message);
   }
 }
+
+/** El recurso existió pero ya no está disponible (p. ej. invitación usada o caducada). */
+export class GoneError extends DomainError {
+  constructor(code: string, message: string) {
+    super(410, code, message);
+  }
+}
