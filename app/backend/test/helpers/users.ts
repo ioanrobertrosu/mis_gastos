@@ -50,10 +50,18 @@ export async function seedBudget(
   data: { name?: string } = {},
 ): Promise<string> {
   for (const { user } of members) await seedUser(user);
+  // Un mismo INSERT asigna el mismo joinedAt a todos: se escalonan para fijar el orden de entrada.
+  const start = Date.now();
   const budget = await testPrisma.budget.create({
     data: {
       name: data.name ?? 'Presupuesto de prueba',
-      members: { create: members.map(({ user, role }) => ({ userId: user.sub, role })) },
+      members: {
+        create: members.map(({ user, role }, i) => ({
+          userId: user.sub,
+          role,
+          joinedAt: new Date(start + i),
+        })),
+      },
     },
   });
   return budget.id;

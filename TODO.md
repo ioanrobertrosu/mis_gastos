@@ -174,13 +174,13 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** usada/caducada → `410` (`INVITATION_USED` / `INVITATION_EXPIRED`); no se puede invitar como OWNER; caducidad 1–168 h (48 h por defecto); el límite de 4 miembros se comprueba al aceptar. Aceptación en una transacción con bloqueos invitación → presupuesto → usuario y `LOCKING_TRANSACTION` (maxWait 10 s, timeout 15 s). Ruta de aceptación con rate limit (10/min por IP).
 
 ### 3.5 Gestión de miembros
-- [ ] 🔴 Test: OWNER cambia el rol de un miembro (no puede degradarse a sí mismo sin transferir)
-- [ ] 🔴 Test: OWNER expulsa a un miembro
-- [ ] 🔴 Test: un miembro no OWNER puede abandonar el presupuesto
-- [ ] 🟢 Implementar las rutas de miembros
+- [x] 🔴 Test: OWNER cambia el rol de un miembro (no puede degradarse a sí mismo sin transferir)
+- [x] 🔴 Test: OWNER expulsa a un miembro
+- [x] 🔴 Test: un miembro no OWNER puede abandonar el presupuesto
+- [x] 🟢 Implementar las rutas de miembros
 
 ### 3.6 Transferencia de propiedad y offboarding
-- [ ] 🔴 Test: OWNER no puede abandonar sin transferir la propiedad antes
+- [x] 🔴 Test: OWNER no puede abandonar sin transferir la propiedad antes
 - [ ] 🔴 Test: la transferencia manual de propiedad intercambia los roles de forma atómica
 - [ ] 🟢 Implementar la transferencia de propiedad
 - [ ] 🔴 Test: al borrar la cuenta, el OWNER pasa al miembro con `joinedAt` más antiguo
