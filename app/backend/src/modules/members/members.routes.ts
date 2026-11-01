@@ -1,7 +1,14 @@
 import { type FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
 import { Role } from '../../generated/prisma/enums.js';
 import { IdParamsSchema } from '../../shared/schemas.js';
-import { changeMemberRole, leaveBudget, listMembers, removeMember } from './members.service.js';
+import { BudgetSchema } from '../budgets/budgets.routes.js';
+import {
+  changeMemberRole,
+  leaveBudget,
+  listMembers,
+  removeMember,
+  transferOwnership,
+} from './members.service.js';
 
 const MemberSchema = Type.Object({
   userId: Type.String(),
@@ -21,6 +28,11 @@ const ChangeRoleBodySchema = Type.Object(
       Type.Literal(Role.VIEWER),
     ]),
   },
+  { additionalProperties: false },
+);
+
+const TransferOwnershipBodySchema = Type.Object(
+  { userId: Type.String({ format: 'uuid' }) },
   { additionalProperties: false },
 );
 
@@ -53,7 +65,13 @@ export const memberRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('member:manage'),
     },
     (request) =>
-      changeMemberRole(app.prisma, request.params.id, request.params.userId, request.body.role),
+      changeMemberRole(
+        app.prisma,
+        request.params.id,
+        request.user.sub,
+        request.params.userId,
+        request.body.role,
+      ),
   );
 
   app.delete(
@@ -63,7 +81,7 @@ export const memberRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('member:manage'),
     },
     async (request, reply) => {
-      await removeMember(app.prisma, request.params.id, request.params.userId);
+      await removeMember(app.prisma, request.params.id, request.user.sub, request.params.userId);
       return reply.code(204).send();
     },
   );
@@ -72,9 +90,22 @@ export const memberRoutes: FastifyPluginAsyncTypebox = async (app) => {
     '/budgets/:id/membership',
     { schema: { params: IdParamsSchema }, preHandler: app.requirePermission('budget:read') },
     async (request, reply) => {
-      const { budgetId, role } = request.membership;
-      await leaveBudget(app.prisma, budgetId, request.user.sub, role);
+      await leaveBudget(app.prisma, request.params.id, request.user.sub);
       return reply.code(204).send();
     },
+  );
+
+  app.post(
+    '/budgets/:id/ownership',
+    {
+      schema: {
+        params: IdParamsSchema,
+        body: TransferOwnershipBodySchema,
+        response: { 200: BudgetSchema },
+      },
+      preHandler: app.requirePermission('member:manage'),
+    },
+    (request) =>
+      transferOwnership(app.prisma, request.params.id, request.user.sub, request.body.userId),
   );
 };

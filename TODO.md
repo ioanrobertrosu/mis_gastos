@@ -181,8 +181,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 
 ### 3.6 Transferencia de propiedad y offboarding
 - [x] 🔴 Test: OWNER no puede abandonar sin transferir la propiedad antes
-- [ ] 🔴 Test: la transferencia manual de propiedad intercambia los roles de forma atómica
-- [ ] 🟢 Implementar la transferencia de propiedad
+- [x] 🔴 Test: la transferencia manual de propiedad intercambia los roles de forma atómica
+- [x] 🟢 Implementar la transferencia de propiedad
+  - **Nota:** `POST /budgets/:id/ownership { userId }`: intercambia los roles (el antiguo OWNER asume el rol del destinatario). Transferencia, cambio de rol, expulsión y abandono bloquean la fila del `Budget` y revalidan el rol del solicitante bajo el bloqueo, de modo que siempre queda exactamente un OWNER.
 - [ ] 🔴 Test: al borrar la cuenta, el OWNER pasa al miembro con `joinedAt` más antiguo
 - [ ] 🔴 Test: al borrar la cuenta siendo el único miembro, el presupuesto se elimina en cascada
 - [ ] 🔴 Test: el borrado de usuario anonimiza (`displayName = "Usuario Eliminado"`) y preserva transacciones y contribuciones

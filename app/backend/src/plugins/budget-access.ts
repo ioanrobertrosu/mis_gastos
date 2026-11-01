@@ -1,9 +1,8 @@
 import type { FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import type { Role } from '../generated/prisma/enums.js';
-import { budgetNotFound } from '../modules/budgets/errors.js';
+import { budgetNotFound, roleForbidden } from '../modules/budgets/errors.js';
 import { type Action, can } from '../modules/budgets/permissions.js';
-import { ForbiddenError } from '../shared/errors.js';
 
 export interface BudgetMembership {
   budgetId: string;
@@ -36,9 +35,7 @@ export const budgetAccessPlugin = fp(
       });
 
       if (!membership) throw budgetNotFound();
-      if (!can(membership.role, action)) {
-        throw new ForbiddenError('Tu rol en este presupuesto no permite esta acción');
-      }
+      if (!can(membership.role, action)) throw roleForbidden();
       request.membership = { budgetId, role: membership.role };
     });
   },
