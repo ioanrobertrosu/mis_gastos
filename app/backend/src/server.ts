@@ -4,6 +4,7 @@ import { buildApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { buildLoggerOptions } from './config/logger.js';
 import { PrismaClient } from './generated/prisma/client.js';
+import { createSupabaseAuthAdmin } from './modules/users/auth-admin.js';
 
 const env = loadEnv();
 
@@ -18,6 +19,10 @@ const app = await buildApp({
     issuer: env.JWT_ISSUER,
     audience: env.JWT_AUDIENCE,
   },
+  authAdmin: createSupabaseAuthAdmin({
+    url: env.SUPABASE_URL,
+    serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
+  }),
   exposeInternalErrors: env.NODE_ENV !== 'production',
   corsOrigins: env.CORS_ORIGINS,
   logger: buildLoggerOptions(env.NODE_ENV),

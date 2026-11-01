@@ -3,6 +3,7 @@ import { schemaController } from './config/validation.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { apiRoutes } from './modules/index.js';
 import { healthRoutes } from './modules/health/health.routes.js';
+import { type AuthAdmin, NOOP_AUTH_ADMIN } from './modules/users/auth-admin.js';
 import { authPlugin, type AuthOptions } from './plugins/auth.js';
 import { budgetAccessPlugin } from './plugins/budget-access.js';
 import { errorHandlerPlugin } from './plugins/error-handler.js';
@@ -19,6 +20,8 @@ export interface BuildAppOptions extends FastifyServerOptions {
   exposeInternalErrors?: boolean;
   /** Orígenes permitidos por CORS. Por defecto ninguno. */
   corsOrigins?: string[];
+  /** Administración de Supabase Auth (borrado de cuentas). Por defecto no hace nada (tests). */
+  authAdmin?: AuthAdmin;
 }
 
 export async function buildApp({
@@ -26,9 +29,11 @@ export async function buildApp({
   auth,
   exposeInternalErrors = false,
   corsOrigins = [],
+  authAdmin = NOOP_AUTH_ADMIN,
   ...options
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ ...options, schemaController });
+  app.decorate('authAdmin', authAdmin);
 
   await app.register(errorHandlerPlugin, { exposeInternalErrors });
   await app.register(securityPlugin, { corsOrigins });

@@ -20,6 +20,9 @@ const EnvSchema = Type.Object({
   SUPABASE_JWT_SECRET: Type.String({ minLength: 32 }),
   JWT_ISSUER: Type.String({ format: 'http-url' }),
   JWT_AUDIENCE: Type.String({ minLength: 1, default: 'authenticated' }),
+  // API de administración de Auth (borrado de cuentas). La clave omite todas las políticas RLS.
+  SUPABASE_URL: Type.String({ format: 'http-url' }),
+  SUPABASE_SERVICE_ROLE_KEY: Type.String({ minLength: 1 }),
 });
 
 export type Env = Omit<Static<typeof EnvSchema>, 'CORS_ORIGINS'> & { CORS_ORIGINS: string[] };

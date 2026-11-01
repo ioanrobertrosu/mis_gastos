@@ -4,9 +4,17 @@ import { loadEnv } from '../../src/config/env.js';
 const DATABASE_URL = 'postgresql://user:pass@localhost:5432/mis_gastos';
 const SUPABASE_JWT_SECRET = 'secreto-de-test-con-al-menos-32-caracteres';
 const JWT_ISSUER = 'https://test-project.supabase.co/auth/v1';
+const SUPABASE_URL = 'https://test-project.supabase.co';
+const SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_clave-de-test';
 
 /** Variables obligatorias mínimas para un entorno válido. */
-const REQUIRED = { DATABASE_URL, SUPABASE_JWT_SECRET, JWT_ISSUER };
+const REQUIRED = {
+  DATABASE_URL,
+  SUPABASE_JWT_SECRET,
+  JWT_ISSUER,
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+};
 
 function without(key: keyof typeof REQUIRED): Record<string, string> {
   const env: Record<string, string> = { ...REQUIRED };
@@ -33,6 +41,8 @@ describe('loadEnv', () => {
       SUPABASE_JWT_SECRET,
       JWT_ISSUER,
       JWT_AUDIENCE: 'authenticated',
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY,
     });
   });
 
@@ -87,6 +97,33 @@ describe('loadEnv', () => {
 
     it('respeta un JWT_AUDIENCE explícito', () => {
       expect(loadEnv({ ...REQUIRED, JWT_AUDIENCE: 'otra' }).JWT_AUDIENCE).toBe('otra');
+    });
+  });
+
+  describe('administración de Supabase Auth', () => {
+    it('falla si falta SUPABASE_URL', () => {
+      expect(() => loadEnv(without('SUPABASE_URL'))).toThrow(/SUPABASE_URL/);
+    });
+
+    it('rechaza una SUPABASE_URL que no es http(s)', () => {
+      expect(() => loadEnv({ ...REQUIRED, SUPABASE_URL: 'test-project.supabase.co' })).toThrow(
+        /SUPABASE_URL/,
+      );
+    });
+
+    it('falla si falta o está vacía SUPABASE_SERVICE_ROLE_KEY', () => {
+      expect(() => loadEnv(without('SUPABASE_SERVICE_ROLE_KEY'))).toThrow(
+        /SUPABASE_SERVICE_ROLE_KEY/,
+      );
+      expect(() => loadEnv({ ...REQUIRED, SUPABASE_SERVICE_ROLE_KEY: '' })).toThrow(
+        /SUPABASE_SERVICE_ROLE_KEY/,
+      );
+    });
+
+    it('no incluye la clave en el mensaje de error', () => {
+      expect(() =>
+        loadEnv({ ...REQUIRED, SUPABASE_URL: 'mal', SUPABASE_SERVICE_ROLE_KEY: 'sb_secret_x' }),
+      ).toThrow(expect.objectContaining({ message: expect.not.stringContaining('sb_secret_x') }));
     });
   });
 });

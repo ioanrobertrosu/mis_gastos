@@ -1,15 +1,18 @@
 import type { FastifyInstance } from 'fastify';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/app.js';
+import type { AuthAdmin } from '../../src/modules/users/auth-admin.js';
 import { testPrisma } from '../helpers/db.js';
 import { signTestToken, TEST_AUTH } from '../helpers/jwt.js';
 import { ANA, authHeader, BEA, CARLOS, DANI, seedBudget, type TestUser } from '../helpers/users.js';
 
 let app: FastifyInstance;
+let authAdmin: { deleteUser: ReturnType<typeof vi.fn<AuthAdmin['deleteUser']>> };
 
 beforeEach(async () => {
+  authAdmin = { deleteUser: vi.fn<AuthAdmin['deleteUser']>(async () => {}) };
   // No se cierra la app: cerrarla desconectaría el cliente compartido de la BD de test.
-  app = await buildApp({ auth: TEST_AUTH, prisma: testPrisma });
+  app = await buildApp({ auth: TEST_AUTH, prisma: testPrisma, authAdmin });
 });
 
 async function deleteAccount(user: TestUser) {
@@ -155,6 +158,46 @@ describe('DELETE /api/v1/me', () => {
         email: ANA.email,
         displayName: null,
       });
+    });
+  });
+
+  describe('Supabase Auth', () => {
+    it('borra también el usuario en Supabase Auth', async () => {
+      expect((await deleteAccount(ANA)).statusCode).toBe(204);
+
+      expect(authAdmin.deleteUser).toHaveBeenCalledOnce();
+      expect(authAdmin.deleteUser).toHaveBeenCalledWith(ANA.sub);
+    });
+
+    it('lo hace después de confirmar el borrado local', async () => {
+      authAdmin.deleteUser.mockImplementationOnce(async (userId) => {
+        const user = await testPrisma.user.findUnique({ where: { id: userId } });
+        expect(user?.deletedAt).toBeInstanceOf(Date);
+      });
+
+      expect((await deleteAccount(ANA)).statusCode).toBe(204);
+      expect(authAdmin.deleteUser).toHaveBeenCalledOnce();
+    });
+
+    it('si Supabase falla, el borrado local se mantiene y la respuesta sigue siendo 204', async () => {
+      authAdmin.deleteUser.mockRejectedValueOnce(new Error('Supabase Auth respondió 500'));
+      await seedBudget([{ user: ANA, role: 'OWNER' }]);
+
+      const response = await deleteAccount(ANA);
+
+      expect(response.statusCode).toBe(204);
+      expect(authAdmin.deleteUser).toHaveBeenCalledOnce();
+      await expect(testPrisma.user.findUnique({ where: { id: ANA.sub } })).resolves.toMatchObject({
+        displayName: 'Usuario Eliminado',
+      });
+      await expect(testPrisma.budgetMember.count({ where: { userId: ANA.sub } })).resolves.toBe(0);
+    });
+
+    it('una cuenta ya borrada (401) no vuelve a llamar a Supabase', async () => {
+      await deleteAccount(ANA);
+      await deleteAccount(ANA);
+
+      expect(authAdmin.deleteUser).toHaveBeenCalledOnce();
     });
   });
 });

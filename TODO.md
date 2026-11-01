@@ -190,7 +190,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** la anonimización ya está cubierta (`delete-me.int.test.ts`); la preservación de transacciones y contribuciones se añadirá a ese test en las Fases 4 y 5, cuando existan esos modelos.
 - [x] 🟢 Implementar `DELETE /me` con el fallback de propiedad y el soft delete
   - **Nota:** `User.deletedAt`; la fila queda anonimizada (`displayName = "Usuario Eliminado"`, avatar nulo, email `deleted-<id>@deleted.invalid` para liberar el original) y se borran sus identidades. `syncUser` responde 401 a una cuenta borrada y nunca la reactiva. Una transacción con bloqueos presupuestos (ordenados) → usuario.
-- [ ] Revocar la sesión / eliminar el usuario en Supabase Auth tras el borrado
+- [x] Revocar la sesión / eliminar el usuario en Supabase Auth tras el borrado
+  - **Nota:** `AuthAdmin` inyectable en `buildApp` (por defecto no hace nada; los tests nunca llaman a Supabase). En producción, `DELETE {SUPABASE_URL}/auth/v1/admin/users/:id` con `SUPABASE_SERVICE_ROLE_KEY` en `apikey` + `Bearer`; 404 cuenta como éxito. Se llama tras confirmar el borrado local; si falla, se registra el error y la respuesta sigue siendo 204 (la cuenta ya está anonimizada y su token recibe 401).
 
 ---
 
