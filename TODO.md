@@ -139,6 +139,7 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: `GET /api/v1/me` devuelve el perfil y las membresías
 - [x] 🔴 Test: `PATCH /api/v1/me` actualiza `displayName`/`avatarUrl` y rechaza campos no permitidos
 - [x] 🟢 Implementar las rutas `/me`
+  - **Nota:** `memberships` (completado tras la Fase 3): `{ budgetId, budgetName, currency, role, joinedAt }` por orden de incorporación; el detalle de cada presupuesto está en `GET /budgets`.
 
 ---
 

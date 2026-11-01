@@ -1,5 +1,6 @@
 import { type FastifyPluginAsyncTypebox, type Static, Type } from '@fastify/type-provider-typebox';
 import type { Prisma } from '../../generated/prisma/client.js';
+import { Currency, Role } from '../../generated/prisma/enums.js';
 import { deleteAccount } from './account.service.js';
 
 const Nullable = <T extends ReturnType<typeof Type.String>>(schema: T) =>
@@ -14,8 +15,16 @@ const ProfileSchema = Type.Object({
   identities: Type.Array(
     Type.Object({ provider: Type.String(), createdAt: Type.String({ format: 'date-time' }) }),
   ),
-  // Se rellenará en la Fase 3 con los presupuestos del usuario (BudgetMember).
-  memberships: Type.Array(Type.Object({})),
+  // Resumen ligero; el detalle de cada presupuesto está en GET /budgets.
+  memberships: Type.Array(
+    Type.Object({
+      budgetId: Type.String(),
+      budgetName: Type.String(),
+      currency: Type.Enum(Currency),
+      role: Type.Enum(Role),
+      joinedAt: Type.String({ format: 'date-time' }),
+    }),
+  ),
 });
 
 const UpdateMeBodySchema = Type.Object(
@@ -37,6 +46,14 @@ const profileSelect = {
   avatarUrl: true,
   createdAt: true,
   identities: { select: { provider: true, createdAt: true }, orderBy: { createdAt: 'asc' } },
+  memberships: {
+    select: {
+      role: true,
+      joinedAt: true,
+      budget: { select: { id: true, name: true, currency: true } },
+    },
+    orderBy: [{ joinedAt: 'asc' }, { id: 'asc' }],
+  },
 } satisfies Prisma.UserSelect;
 
 type Profile = Static<typeof ProfileSchema>;
@@ -49,7 +66,13 @@ function toProfile(user: Prisma.UserGetPayload<{ select: typeof profileSelect }>
       provider: identity.provider,
       createdAt: identity.createdAt.toISOString(),
     })),
-    memberships: [],
+    memberships: user.memberships.map(({ role, joinedAt, budget }) => ({
+      budgetId: budget.id,
+      budgetName: budget.name,
+      currency: budget.currency,
+      role,
+      joinedAt: joinedAt.toISOString(),
+    })),
   };
 }
 

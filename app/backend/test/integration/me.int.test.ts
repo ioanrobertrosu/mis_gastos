@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { testPrisma } from '../helpers/db.js';
 import { signTestToken, TEST_AUTH, TEST_USER } from '../helpers/jwt.js';
+import { ANA, BEA, seedBudget, type TestUser } from '../helpers/users.js';
 
 const ISO_DATE = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
 
@@ -24,6 +25,13 @@ async function request(method: 'GET' | 'PATCH', payload?: unknown, authenticated
   });
 }
 
+async function setJoinedAt(user: TestUser, budgetId: string, joinedAt: string) {
+  await testPrisma.budgetMember.update({
+    where: { userId_budgetId: { userId: user.sub, budgetId } },
+    data: { joinedAt: new Date(joinedAt) },
+  });
+}
+
 describe('GET /api/v1/me', () => {
   it('sin token devuelve 401', async () => {
     const response = await request('GET', undefined, false);
@@ -31,7 +39,7 @@ describe('GET /api/v1/me', () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it('devuelve el perfil, las identidades vinculadas y las membresías', async () => {
+  it('devuelve el perfil y las identidades vinculadas; sin presupuestos, membresías vacías', async () => {
     const response = await request('GET');
 
     expect(response.statusCode).toBe(200);
@@ -42,9 +50,58 @@ describe('GET /api/v1/me', () => {
       avatarUrl: null,
       createdAt: ISO_DATE,
       identities: [{ provider: 'google', createdAt: ISO_DATE }],
-      // Los presupuestos llegan en la Fase 3 (BudgetMember).
       memberships: [],
     });
+  });
+
+  it('incluye las membresías del usuario por orden de incorporación', async () => {
+    const shared = await seedBudget(
+      [
+        { user: BEA, role: 'OWNER' },
+        { user: ANA, role: 'VIEWER' },
+      ],
+      { name: 'Casa' },
+    );
+    const own = await seedBudget([{ user: ANA, role: 'OWNER' }], { name: 'Viajes' });
+    await seedBudget([{ user: BEA, role: 'OWNER' }], { name: 'Ajeno' });
+    await testPrisma.budget.update({ where: { id: own }, data: { currency: 'USD' } });
+    // Fechas explícitas: ANA entró antes en «Viajes» que en «Casa».
+    await setJoinedAt(ANA, own, '2026-01-01T00:00:00.000Z');
+    await setJoinedAt(ANA, shared, '2026-02-01T00:00:00.000Z');
+
+    const response = await request('GET');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().memberships).toEqual([
+      {
+        budgetId: own,
+        budgetName: 'Viajes',
+        currency: 'USD',
+        role: 'OWNER',
+        joinedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        budgetId: shared,
+        budgetName: 'Casa',
+        currency: 'EUR',
+        role: 'VIEWER',
+        joinedAt: '2026-02-01T00:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('refleja los cambios de membresía (abandonar un presupuesto)', async () => {
+    const id = await seedBudget([
+      { user: BEA, role: 'OWNER' },
+      { user: ANA, role: 'EDITOR' },
+    ]);
+    expect((await request('GET')).json().memberships).toHaveLength(1);
+
+    await testPrisma.budgetMember.delete({
+      where: { userId_budgetId: { userId: ANA.sub, budgetId: id } },
+    });
+
+    expect((await request('GET')).json().memberships).toEqual([]);
   });
 });
 
@@ -67,6 +124,16 @@ describe('PATCH /api/v1/me', () => {
         select: { displayName: true, avatarUrl: true },
       }),
     ).resolves.toEqual({ displayName: 'Ana García', avatarUrl: 'https://cdn.example.com/ana.png' });
+  });
+
+  it('devuelve también las membresías en el perfil actualizado', async () => {
+    const id = await seedBudget([{ user: ANA, role: 'OWNER' }], { name: 'Casa' });
+
+    const response = await request('PATCH', { displayName: 'Ana' });
+
+    expect(response.json().memberships).toEqual([
+      { budgetId: id, budgetName: 'Casa', currency: 'EUR', role: 'OWNER', joinedAt: ISO_DATE },
+    ]);
   });
 
   it('una actualización parcial no toca los demás campos', async () => {
