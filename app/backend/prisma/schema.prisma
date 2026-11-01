@@ -36,6 +36,8 @@ model User {
   displayName String?
   avatarUrl   String?
   createdAt   DateTime @default(now())
+  // Soft delete: la fila se conserva anonimizada para no romper el historial de sus movimientos.
+  deletedAt   DateTime?
 
   identities         Identity[]
   memberships        BudgetMember[]

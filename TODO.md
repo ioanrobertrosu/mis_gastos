@@ -184,10 +184,12 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: la transferencia manual de propiedad intercambia los roles de forma atómica
 - [x] 🟢 Implementar la transferencia de propiedad
   - **Nota:** `POST /budgets/:id/ownership { userId }`: intercambia los roles (el antiguo OWNER asume el rol del destinatario). Transferencia, cambio de rol, expulsión y abandono bloquean la fila del `Budget` y revalidan el rol del solicitante bajo el bloqueo, de modo que siempre queda exactamente un OWNER.
-- [ ] 🔴 Test: al borrar la cuenta, el OWNER pasa al miembro con `joinedAt` más antiguo
-- [ ] 🔴 Test: al borrar la cuenta siendo el único miembro, el presupuesto se elimina en cascada
+- [x] 🔴 Test: al borrar la cuenta, el OWNER pasa al miembro con `joinedAt` más antiguo
+- [x] 🔴 Test: al borrar la cuenta siendo el único miembro, el presupuesto se elimina en cascada
 - [ ] 🔴 Test: el borrado de usuario anonimiza (`displayName = "Usuario Eliminado"`) y preserva transacciones y contribuciones
-- [ ] 🟢 Implementar `DELETE /me` con el fallback de propiedad y el soft delete
+  - **Nota:** la anonimización ya está cubierta (`delete-me.int.test.ts`); la preservación de transacciones y contribuciones se añadirá a ese test en las Fases 4 y 5, cuando existan esos modelos.
+- [x] 🟢 Implementar `DELETE /me` con el fallback de propiedad y el soft delete
+  - **Nota:** `User.deletedAt`; la fila queda anonimizada (`displayName = "Usuario Eliminado"`, avatar nulo, email `deleted-<id>@deleted.invalid` para liberar el original) y se borran sus identidades. `syncUser` responde 401 a una cuenta borrada y nunca la reactiva. Una transacción con bloqueos presupuestos (ordenados) → usuario.
 - [ ] Revocar la sesión / eliminar el usuario en Supabase Auth tras el borrado
 
 ---

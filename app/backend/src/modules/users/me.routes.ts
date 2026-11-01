@@ -1,5 +1,6 @@
 import { type FastifyPluginAsyncTypebox, type Static, Type } from '@fastify/type-provider-typebox';
 import type { Prisma } from '../../generated/prisma/client.js';
+import { deleteAccount } from './account.service.js';
 
 const Nullable = <T extends ReturnType<typeof Type.String>>(schema: T) =>
   Type.Union([schema, Type.Null()]);
@@ -76,4 +77,9 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (app) => {
       return toProfile(user);
     },
   );
+
+  app.delete('/me', async (request, reply) => {
+    await deleteAccount(app.prisma, request.user.sub);
+    return reply.code(204).send();
+  });
 };
