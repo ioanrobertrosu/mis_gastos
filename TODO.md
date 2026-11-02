@@ -217,9 +217,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: los importes se validan como decimales con 2 decimales como máximo (sin floats)
 - [x] 🟢 Implementar el CRUD de transacciones
   - **Nota:** importe > 0 (`PositiveMoneySchema`); fecha `YYYY-MM-DD`. Categoría de otro presupuesto/inexistente → 404, inactiva → 409 (al crear y al moverla; una transacción ya existente en una categoría desactivada sigue siendo editable). LIMITED_EDITOR solo modifica las suyas (`transaction:edit-any` decide), tampoco las de autor borrado.
-- [ ] 🔴 Test: paginación por cursor (`limit` 20 por defecto, `nextCursor`, orden estable `date DESC, id DESC`)
-- [ ] 🔴 Test: filtros por categoría y rango de fechas
-- [ ] 🟢 Implementar el listado paginado
+- [x] 🔴 Test: paginación por cursor (`limit` 20 por defecto, `nextCursor`, orden estable `date DESC, id DESC`)
+- [x] 🔴 Test: filtros por categoría y rango de fechas
+- [x] 🟢 Implementar el listado paginado
+  - **Nota:** `GET /budgets/:id/transactions` → `{ items, nextCursor }`. Cursor keyset opaco (base64url de `[date, id]`), robusto ante borrados/altas entre páginas; `limit` 1–100 (20 por defecto); filtros `categoryId`, `from`, `to` (inclusivos). Cursor ilegible o `from > to` → 400 `VALIDATION_ERROR`.
 - [x] ❓ Definir el comportamiento de `isRecurring` (plantilla + generación mensual o solo marca informativa)
   - **Decisión:** solo marca informativa. Las transacciones recurrentes se registran a mano cada mes, porque el importe real puede diferir del previsto (ej. 400 € presupuestados → 300 € pagados).
 - [ ] 🔴 Test: `isRecurring` se acepta al crear/editar y el listado permite filtrar por él

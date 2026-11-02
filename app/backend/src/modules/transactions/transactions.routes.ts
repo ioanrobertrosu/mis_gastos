@@ -5,6 +5,7 @@ import {
   createTransaction,
   deleteTransaction,
   getTransaction,
+  listTransactions,
   updateTransaction,
 } from './transactions.service.js';
 
@@ -43,6 +44,22 @@ const UpdateTransactionBodySchema = Type.Object(
   { additionalProperties: false, minProperties: 1 },
 );
 
+const TransactionPageSchema = Type.Object({
+  items: Type.Array(TransactionSchema),
+  nextCursor: Type.Union([Type.String(), Type.Null()]),
+});
+
+const ListTransactionsQuerySchema = Type.Object(
+  {
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+    cursor: Type.Optional(Type.String({ minLength: 1 })),
+    categoryId: Type.Optional(Type.String({ format: 'uuid' })),
+    from: Type.Optional(DateSchema),
+    to: Type.Optional(DateSchema),
+  },
+  { additionalProperties: false },
+);
+
 const TransactionParamsSchema = Type.Object({
   id: Type.String({ format: 'uuid' }),
   transactionId: Type.String({ format: 'uuid' }),
@@ -66,6 +83,19 @@ export const transactionRoutes: FastifyPluginAsyncTypebox = async (app) => {
       reply.code(201);
       return createTransaction(app.prisma, request.params.id, request.user.sub, request.body);
     },
+  );
+
+  app.get(
+    '/budgets/:id/transactions',
+    {
+      schema: {
+        params: IdParamsSchema,
+        querystring: ListTransactionsQuerySchema,
+        response: { 200: TransactionPageSchema },
+      },
+      preHandler: app.requirePermission('budget:read'),
+    },
+    (request) => listTransactions(app.prisma, request.params.id, request.query),
   );
 
   app.get(

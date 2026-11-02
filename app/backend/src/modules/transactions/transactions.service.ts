@@ -1,8 +1,14 @@
 import type { Prisma, PrismaClient, Role } from '../../generated/prisma/client.js';
-import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from '../../shared/errors.js';
 import { formatMoney } from '../../shared/money.js';
 import { can } from '../budgets/permissions.js';
 import { categoryNotFound } from '../categories/errors.js';
+import { decodeCursor, encodeCursor } from './cursor.js';
 
 const transactionSelect = {
   id: true,
@@ -101,6 +107,71 @@ async function assertEditable(
   if (!can(actor.role, 'transaction:edit-any') && transaction.createdById !== actor.userId) {
     throw new ForbiddenError('Solo puedes modificar las transacciones que has creado');
   }
+}
+
+export const DEFAULT_PAGE_SIZE = 20;
+
+export interface TransactionFilters {
+  limit?: number;
+  cursor?: string;
+  categoryId?: string;
+  /** `YYYY-MM-DD`, ambos extremos incluidos. */
+  from?: string;
+  to?: string;
+}
+
+export interface TransactionPage {
+  items: TransactionView[];
+  nextCursor: string | null;
+}
+
+/**
+ * Paginación por cursor (keyset) en orden `date DESC, id DESC`: la página siguiente empieza
+ * estrictamente después de la clave del cursor, así que borrar o añadir transacciones entre
+ * peticiones no duplica ni salta elementos. Se lee uno de más para saber si hay otra página.
+ */
+export async function listTransactions(
+  prisma: PrismaClient,
+  budgetId: string,
+  { limit = DEFAULT_PAGE_SIZE, cursor, categoryId, from, to }: TransactionFilters,
+): Promise<TransactionPage> {
+  if (from !== undefined && to !== undefined && from > to) {
+    throw new ValidationError('La fecha inicial no puede ser posterior a la final');
+  }
+  const after = cursor === undefined ? undefined : decodeCursor(cursor);
+
+  const rows = await prisma.transaction.findMany({
+    where: {
+      budgetId,
+      ...(categoryId === undefined ? {} : { categoryId }),
+      ...(from === undefined && to === undefined
+        ? {}
+        : {
+            date: {
+              ...(from === undefined ? {} : { gte: parseDate(from) }),
+              ...(to === undefined ? {} : { lte: parseDate(to) }),
+            },
+          }),
+      ...(after === undefined
+        ? {}
+        : {
+            OR: [
+              { date: { lt: parseDate(after.date) } },
+              { date: parseDate(after.date), id: { lt: after.id } },
+            ],
+          }),
+    },
+    orderBy: [{ date: 'desc' }, { id: 'desc' }],
+    take: limit + 1,
+    select: transactionSelect,
+  });
+
+  const items = rows.slice(0, limit).map(toView);
+  const last = items.at(-1);
+  return {
+    items,
+    nextCursor: rows.length > limit && last ? encodeCursor(last) : null,
+  };
 }
 
 /** El permiso (`transaction:create`) lo comprueba la ruta con `requirePermission`. */

@@ -10,6 +10,13 @@ export class DomainError extends Error {
   }
 }
 
+/** Entrada inválida que el esquema no puede expresar (mismo código que la validación de Fastify). */
+export class ValidationError extends DomainError {
+  constructor(message: string) {
+    super(400, 'VALIDATION_ERROR', message);
+  }
+}
+
 export class NotFoundError extends DomainError {
   constructor(message = 'Recurso no encontrado') {
     super(404, 'NOT_FOUND', message);
