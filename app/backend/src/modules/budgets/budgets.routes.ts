@@ -1,5 +1,6 @@
 import { type FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
 import { Currency, Role } from '../../generated/prisma/enums.js';
+import { MonthSchema } from '../../shared/month.js';
 import { IdParamsSchema } from '../../shared/schemas.js';
 import {
   createBudget,
@@ -8,6 +9,7 @@ import {
   listBudgets,
   updateBudget,
 } from './budgets.service.js';
+import { getBudgetSummary } from './summary.service.js';
 
 export const BudgetSchema = Type.Object({
   id: Type.String(),
@@ -29,6 +31,20 @@ const CreateBudgetBodySchema = Type.Object(
 const UpdateBudgetBodySchema = Type.Object(
   { name: Type.Optional(BudgetNameSchema), currency: Type.Optional(Type.Enum(Currency)) },
   { additionalProperties: false, minProperties: 1 },
+);
+
+const SummarySchema = Type.Object({
+  month: Type.String(),
+  currency: Type.Enum(Currency),
+  allocated: Type.String(),
+  spent: Type.String(),
+  remaining: Type.String(),
+  percentUsed: Type.Union([Type.Number(), Type.Null()]),
+});
+
+const SummaryQuerySchema = Type.Object(
+  { month: Type.Optional(MonthSchema) },
+  { additionalProperties: false },
 );
 
 export const budgetRoutes: FastifyPluginAsyncTypebox = async (app) => {
@@ -65,6 +81,19 @@ export const budgetRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('budget:update'),
     },
     (request) => updateBudget(app.prisma, request.user.sub, request.params.id, request.body),
+  );
+
+  app.get(
+    '/budgets/:id/summary',
+    {
+      schema: {
+        params: IdParamsSchema,
+        querystring: SummaryQuerySchema,
+        response: { 200: SummarySchema },
+      },
+      preHandler: app.requirePermission('budget:read'),
+    },
+    (request) => getBudgetSummary(app.prisma, request.params.id, request.query.month),
   );
 
   app.delete(

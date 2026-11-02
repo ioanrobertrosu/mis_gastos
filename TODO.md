@@ -228,8 +228,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🟢 Implementar el campo y el filtro `isRecurring`
 
 ### 4.3 Resumen del presupuesto
-- [ ] 🔴 Test: `GET /budgets/:id/summary?month=YYYY-MM` devuelve el asignado, el gastado y el restante (base cero)
-- [ ] 🟢 Implementar el resumen
+- [x] 🔴 Test: `GET /budgets/:id/summary?month=YYYY-MM` devuelve el asignado, el gastado y el restante (base cero)
+- [x] 🟢 Implementar el resumen
+  - **Nota:** `{ month, currency, allocated, spent, remaining, percentUsed }`. Asignado = límites de las categorías activas; gastado = todo el gasto del mes (también en categorías desactivadas después); restante puede ser negativo. Sumas en la BD (NUMERIC).
 
 ---
 

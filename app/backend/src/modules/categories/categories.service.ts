@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
-import { formatMoney } from '../../shared/money.js';
+import { formatMoney, percentOf } from '../../shared/money.js';
 import { monthRange } from '../../shared/month.js';
 import { categoryNotFound } from './errors.js';
 
@@ -49,12 +49,6 @@ export interface CategoryWithSpending extends CategoryView {
   spent: string;
   /** `spent / monthlyLimit` en %, con 1 decimal; `null` si el límite es 0. Puede superar 100. */
   percentUsed: number | null;
-}
-
-/** Porcentaje exacto en decimal, redondeado a 1 decimal (mitad hacia arriba). */
-function percentOf(spent: Prisma.Decimal, limit: Prisma.Decimal): number | null {
-  if (limit.isZero()) return null;
-  return spent.div(limit).mul(100).toDecimalPlaces(1, Prisma.Decimal.ROUND_HALF_UP).toNumber();
 }
 
 export async function listCategories(
