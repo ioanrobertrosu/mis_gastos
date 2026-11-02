@@ -4,8 +4,11 @@ import { ACTIONS, type Action, can } from '../src/modules/budgets/permissions.js
 
 const ROLES: Role[] = ['OWNER', 'EDITOR', 'LIMITED_EDITOR', 'VIEWER'];
 
-/** Matriz de permisos del PRD §5.2: qué roles pueden realizar cada acción. */
-const EXPECTED: Record<Action, Role[]> = {
+/**
+ * Matriz de permisos del PRD §5.2: qué roles pueden realizar cada acción. Claves `string` (no
+ * `Action`) para que una acción esperada que falte en el código falle como test, no al compilar.
+ */
+const EXPECTED: Record<string, Role[]> = {
   'budget:read': ['OWNER', 'EDITOR', 'LIMITED_EDITOR', 'VIEWER'],
   'budget:export': ['OWNER', 'EDITOR', 'LIMITED_EDITOR', 'VIEWER'],
   'budget:update': ['OWNER'],
@@ -14,6 +17,8 @@ const EXPECTED: Record<Action, Role[]> = {
   'invite:manage': ['OWNER'],
   'category:manage': ['OWNER'],
   'goal:manage': ['OWNER', 'EDITOR'],
+  // Aportar a una meta es como registrar dinero: quien puede crear transacciones.
+  'goal:contribute': ['OWNER', 'EDITOR', 'LIMITED_EDITOR'],
   'transaction:create': ['OWNER', 'EDITOR', 'LIMITED_EDITOR'],
   'transaction:edit-any': ['OWNER', 'EDITOR'],
   'transaction:edit-own': ['OWNER', 'EDITOR', 'LIMITED_EDITOR'],
@@ -25,8 +30,8 @@ describe('matriz de permisos', () => {
   });
 
   const cases = ROLES.flatMap((role) =>
-    (Object.keys(EXPECTED) as Action[]).map(
-      (action) => [role, action, EXPECTED[action].includes(role)] as const,
+    Object.entries(EXPECTED).map(
+      ([action, roles]) => [role, action as Action, roles.includes(role)] as const,
     ),
   );
 

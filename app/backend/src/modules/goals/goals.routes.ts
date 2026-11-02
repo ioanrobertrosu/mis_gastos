@@ -3,6 +3,7 @@ import { GoalStatus } from '../../generated/prisma/enums.js';
 import { DateSchema } from '../../shared/date.js';
 import { PositiveMoneySchema } from '../../shared/money.js';
 import { IdParamsSchema } from '../../shared/schemas.js';
+import { addContribution } from './contributions.service.js';
 import { createGoal, deleteGoal, getGoal, listGoals, updateGoal } from './goals.service.js';
 
 export const GoalSchema = Type.Object({
@@ -40,6 +41,18 @@ const UpdateGoalBodySchema = Type.Object(
 
 const ListGoalsQuerySchema = Type.Object(
   { status: Type.Optional(Type.Enum(GoalStatus)) },
+  { additionalProperties: false },
+);
+
+const ContributionSchema = Type.Object({
+  id: Type.String(),
+  amount: Type.String(),
+  userId: Type.Union([Type.String(), Type.Null()]),
+  createdAt: Type.String({ format: 'date-time' }),
+});
+
+const ContributionBodySchema = Type.Object(
+  { amount: PositiveMoneySchema },
   { additionalProperties: false },
 );
 
@@ -97,6 +110,28 @@ export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('goal:manage'),
     },
     (request) => updateGoal(app.prisma, request.params.id, request.params.goalId, request.body),
+  );
+
+  app.post(
+    '/budgets/:id/goals/:goalId/contributions',
+    {
+      schema: {
+        params: GoalParamsSchema,
+        body: ContributionBodySchema,
+        response: { 201: Type.Object({ contribution: ContributionSchema, goal: GoalSchema }) },
+      },
+      preHandler: app.requirePermission('goal:contribute'),
+    },
+    async (request, reply) => {
+      reply.code(201);
+      return addContribution(
+        app.prisma,
+        request.params.id,
+        request.params.goalId,
+        request.user.sub,
+        request.body.amount,
+      );
+    },
   );
 
   app.delete(

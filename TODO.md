@@ -187,8 +187,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** `POST /budgets/:id/ownership { userId }`: intercambia los roles (el antiguo OWNER asume el rol del destinatario). Transferencia, cambio de rol, expulsión y abandono bloquean la fila del `Budget` y revalidan el rol del solicitante bajo el bloqueo, de modo que siempre queda exactamente un OWNER.
 - [x] 🔴 Test: al borrar la cuenta, el OWNER pasa al miembro con `joinedAt` más antiguo
 - [x] 🔴 Test: al borrar la cuenta siendo el único miembro, el presupuesto se elimina en cascada
-- [ ] 🔴 Test: el borrado de usuario anonimiza (`displayName = "Usuario Eliminado"`) y preserva transacciones y contribuciones
-  - **Nota:** anonimización y preservación de transacciones cubiertas (`delete-me.int.test.ts`); falta la de contribuciones (Fase 5).
+- [x] 🔴 Test: el borrado de usuario anonimiza (`displayName = "Usuario Eliminado"`) y preserva transacciones y contribuciones
+  - **Nota:** cubierto en `delete-me.int.test.ts` (transacciones en la Fase 4, contribuciones en la 5). Pasan desde el principio: el soft delete conserva la fila del usuario y nada borra sus movimientos; son tests de regresión.
 - [x] 🟢 Implementar `DELETE /me` con el fallback de propiedad y el soft delete
   - **Nota:** `User.deletedAt`; la fila queda anonimizada (`displayName = "Usuario Eliminado"`, avatar nulo, email `deleted-<id>@deleted.invalid` para liberar el original) y se borran sus identidades. `syncUser` responde 401 a una cuenta borrada y nunca la reactiva. Una transacción con bloqueos presupuestos (ordenados) → usuario.
 - [x] Revocar la sesión / eliminar el usuario en Supabase Auth tras el borrado
@@ -241,11 +241,12 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: OWNER/EDITOR crean, editan y borran metas; LIMITED_EDITOR y VIEWER no
 - [x] 🟢 Implementar el CRUD de metas
   - **Nota:** `status` y `currentAmount` no se editan: el estado se deriva (`REACHED` si lo ahorrado ≥ objetivo) y `archived: true/false` archiva/desarchiva recalculándolo. La edición bloquea la fila de la meta (`FOR UPDATE`) para no competir con las contribuciones. Fechas compartidas en `shared/date.ts`.
-- [ ] 🔴 Test: una contribución incrementa `currentAmount` de forma atómica (`increment` en transacción)
-- [ ] 🔴 Test: contribuciones concurrentes no pierden actualizaciones
-- [ ] 🔴 Test: al alcanzar `targetAmount` el estado pasa a `REACHED`
-- [ ] 🔴 Test: no se admiten contribuciones a metas `ARCHIVED`
-- [ ] 🟢 Implementar las contribuciones
+- [x] 🔴 Test: una contribución incrementa `currentAmount` de forma atómica (`increment` en transacción)
+- [x] 🔴 Test: contribuciones concurrentes no pierden actualizaciones
+- [x] 🔴 Test: al alcanzar `targetAmount` el estado pasa a `REACHED`
+- [x] 🔴 Test: no se admiten contribuciones a metas `ARCHIVED`
+- [x] 🟢 Implementar las contribuciones
+  - **Nota:** `POST /budgets/:id/goals/:goalId/contributions { amount }` → `{ contribution, goal }`. Nueva acción `goal:contribute` (OWNER/EDITOR/LIMITED_EDITOR). Una transacción con bloqueo de la meta: `increment` + recálculo del estado; `ARCHIVED` → 409; una meta `REACHED` sigue admitiendo aportaciones. Sin el bloqueo, falla el test de archivar mientras se aporta (el estado se sobrescribía).
 - [ ] 🔴 Test: listado de contribuciones por meta con autor (anonimizado si el usuario fue borrado)
 - [ ] 🟢 Implementar el listado
 

@@ -12,6 +12,8 @@ const PERMISSIONS = {
   'invite:manage': ['OWNER'],
   'category:manage': ['OWNER'],
   'goal:manage': ['OWNER', 'EDITOR'],
+  // Aportar a una meta es como registrar dinero: quien puede crear transacciones.
+  'goal:contribute': ['OWNER', 'EDITOR', 'LIMITED_EDITOR'],
   'transaction:create': ['OWNER', 'EDITOR', 'LIMITED_EDITOR'],
   'transaction:edit-any': ['OWNER', 'EDITOR'],
   // LIMITED_EDITOR: solo las transacciones que creó él (lo comprueba el módulo de transacciones).

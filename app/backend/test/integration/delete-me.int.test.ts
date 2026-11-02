@@ -2,7 +2,13 @@ import type { FastifyInstance } from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import type { AuthAdmin } from '../../src/modules/users/auth-admin.js';
-import { seedCategory, seedTransaction, storedTransaction } from '../helpers/budget-data.js';
+import {
+  seedCategory,
+  seedGoal,
+  seedTransaction,
+  storedGoal,
+  storedTransaction,
+} from '../helpers/budget-data.js';
 import { testPrisma } from '../helpers/db.js';
 import { signTestToken, TEST_AUTH } from '../helpers/jwt.js';
 import { ANA, authHeader, BEA, CARLOS, DANI, seedBudget, type TestUser } from '../helpers/users.js';
@@ -180,6 +186,27 @@ describe('DELETE /api/v1/me', () => {
       await expect(
         testPrisma.user.findUnique({ where: { id: ANA.sub }, select: { displayName: true } }),
       ).resolves.toEqual({ displayName: 'Usuario Eliminado' });
+    });
+
+    it('las contribuciones a metas se conservan y la meta no se descuadra', async () => {
+      const shared = await seedBudget([
+        { user: ANA, role: 'OWNER' },
+        { user: BEA, role: 'EDITOR' },
+      ]);
+      const goal = await seedGoal(shared, { currentAmount: '75.50' });
+      await testPrisma.goalContribution.create({
+        data: { goalId: goal, userId: ANA.sub, amount: '75.50' },
+      });
+
+      expect((await deleteAccount(ANA)).statusCode).toBe(204);
+
+      await expect(
+        testPrisma.goalContribution.findMany({
+          where: { goalId: goal },
+          select: { userId: true, amount: true },
+        }),
+      ).resolves.toEqual([{ userId: ANA.sub, amount: expect.anything() }]);
+      await expect(storedGoal(goal)).resolves.toMatchObject({ currentAmount: '75.50' });
     });
 
     it('las transacciones de un presupuesto borrado en cascada desaparecen con él', async () => {
