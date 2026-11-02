@@ -1,5 +1,6 @@
-import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
+import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { formatMoney } from '../../shared/money.js';
+import { monthRange } from '../../shared/month.js';
 import { categoryNotFound } from './errors.js';
 
 const categorySelect = {
@@ -43,17 +44,48 @@ function toView(category: Category): CategoryView {
   };
 }
 
+export interface CategoryWithSpending extends CategoryView {
+  /** Gasto del mes, con 2 decimales. */
+  spent: string;
+  /** `spent / monthlyLimit` en %, con 1 decimal; `null` si el límite es 0. Puede superar 100. */
+  percentUsed: number | null;
+}
+
+/** Porcentaje exacto en decimal, redondeado a 1 decimal (mitad hacia arriba). */
+function percentOf(spent: Prisma.Decimal, limit: Prisma.Decimal): number | null {
+  if (limit.isZero()) return null;
+  return spent.div(limit).mul(100).toDecimalPlaces(1, Prisma.Decimal.ROUND_HALF_UP).toNumber();
+}
+
 export async function listCategories(
   prisma: PrismaClient,
   budgetId: string,
-  includeInactive = false,
-): Promise<CategoryView[]> {
-  const categories = await prisma.category.findMany({
-    where: { budgetId, ...(includeInactive ? {} : { isActive: true }) },
-    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    select: categorySelect,
+  { includeInactive = false, month }: { includeInactive?: boolean; month?: string } = {},
+): Promise<CategoryWithSpending[]> {
+  const { start, end } = monthRange(month);
+  const [categories, totals] = await Promise.all([
+    prisma.category.findMany({
+      where: { budgetId, ...(includeInactive ? {} : { isActive: true }) },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: categorySelect,
+    }),
+    // La suma la hace la BD en NUMERIC: exacta, sin pasar por coma flotante.
+    prisma.transaction.groupBy({
+      by: ['categoryId'],
+      where: { budgetId, date: { gte: start, lt: end } },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const spentBy = new Map(totals.map(({ categoryId, _sum }) => [categoryId, _sum.amount]));
+  return categories.map((category) => {
+    const spent = spentBy.get(category.id) ?? new Prisma.Decimal(0);
+    return {
+      ...toView(category),
+      spent: formatMoney(spent),
+      percentUsed: percentOf(spent, category.monthlyLimit),
+    };
   });
-  return categories.map(toView);
 }
 
 /** El permiso (`category:manage`) lo comprueba la ruta con `requirePermission`. */

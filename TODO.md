@@ -205,8 +205,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: el borrado es soft delete (`isActive = false`) y las inactivas no se listan por defecto
 - [x] 🟢 Implementar el CRUD de categorías
   - **Nota:** importes como texto (`MoneySchema` en `shared/money.ts`: hasta 10 cifras enteras y 2 decimales, sin números JSON) y siempre devueltos con 2 decimales. `PATCH` solo acepta `isActive: true` (reactivar); desactivar es `DELETE` (soft delete idempotente). Una categoría de otro presupuesto → 404 "Categoría no encontrada".
-- [ ] 🔴 Test: el listado incluye el gasto acumulado del mes actual y el porcentaje consumido
-- [ ] 🟢 Implementar la agregación mensual por categoría
+- [x] 🔴 Test: el listado incluye el gasto acumulado del mes actual y el porcentaje consumido
+- [x] 🟢 Implementar la agregación mensual por categoría
+  - **Nota:** `GET /budgets/:id/categories?month=YYYY-MM` (por defecto el mes actual UTC) añade `spent` (texto, 2 decimales, suma en la BD) y `percentUsed` (1 decimal, mitad hacia arriba; `null` con límite 0; puede superar 100). Rango del mes en `shared/month.ts`.
 
 ### 4.2 Transacciones
 - [x] Añadir el modelo `Transaction` (con `createdById` y tipo) y migrar

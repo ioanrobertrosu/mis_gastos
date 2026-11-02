@@ -1,5 +1,6 @@
 import { type FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
 import { MoneySchema } from '../../shared/money.js';
+import { MonthSchema } from '../../shared/month.js';
 import { IdParamsSchema } from '../../shared/schemas.js';
 import {
   createCategory,
@@ -50,8 +51,14 @@ const UpdateCategoryBodySchema = Type.Object(
   { additionalProperties: false, minProperties: 1 },
 );
 
+const CategoryWithSpendingSchema = Type.Object({
+  ...CategorySchema.properties,
+  spent: Type.String(),
+  percentUsed: Type.Union([Type.Number(), Type.Null()]),
+});
+
 const ListCategoriesQuerySchema = Type.Object(
-  { includeInactive: Type.Optional(Type.Boolean()) },
+  { includeInactive: Type.Optional(Type.Boolean()), month: Type.Optional(MonthSchema) },
   { additionalProperties: false },
 );
 
@@ -70,11 +77,11 @@ export const categoryRoutes: FastifyPluginAsyncTypebox = async (app) => {
       schema: {
         params: IdParamsSchema,
         querystring: ListCategoriesQuerySchema,
-        response: { 200: Type.Array(CategorySchema) },
+        response: { 200: Type.Array(CategoryWithSpendingSchema) },
       },
       preHandler: app.requirePermission('budget:read'),
     },
-    (request) => listCategories(app.prisma, request.params.id, request.query.includeInactive),
+    (request) => listCategories(app.prisma, request.params.id, request.query),
   );
 
   app.post(
