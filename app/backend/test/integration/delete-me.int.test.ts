@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import type { AuthAdmin } from '../../src/modules/users/auth-admin.js';
+import { seedCategory, seedTransaction, storedTransaction } from '../helpers/budget-data.js';
 import { testPrisma } from '../helpers/db.js';
 import { signTestToken, TEST_AUTH } from '../helpers/jwt.js';
 import { ANA, authHeader, BEA, CARLOS, DANI, seedBudget, type TestUser } from '../helpers/users.js';
@@ -158,6 +159,36 @@ describe('DELETE /api/v1/me', () => {
         email: ANA.email,
         displayName: null,
       });
+    });
+  });
+
+  describe('integridad de los movimientos', () => {
+    it('las transacciones del usuario borrado se conservan con su autor anonimizado', async () => {
+      const shared = await seedBudget([
+        { user: ANA, role: 'OWNER' },
+        { user: BEA, role: 'EDITOR' },
+      ]);
+      const categoryId = await seedCategory(shared);
+      const id = await seedTransaction(shared, categoryId, { createdBy: ANA, amount: '42.10' });
+
+      expect((await deleteAccount(ANA)).statusCode).toBe(204);
+
+      await expect(storedTransaction(id)).resolves.toMatchObject({
+        amount: '42.10',
+        createdById: ANA.sub,
+      });
+      await expect(
+        testPrisma.user.findUnique({ where: { id: ANA.sub }, select: { displayName: true } }),
+      ).resolves.toEqual({ displayName: 'Usuario Eliminado' });
+    });
+
+    it('las transacciones de un presupuesto borrado en cascada desaparecen con él', async () => {
+      const alone = await seedBudget([{ user: ANA, role: 'OWNER' }]);
+      const id = await seedTransaction(alone, await seedCategory(alone), { createdBy: ANA });
+
+      expect((await deleteAccount(ANA)).statusCode).toBe(204);
+
+      await expect(storedTransaction(id)).resolves.toBeNull();
     });
   });
 

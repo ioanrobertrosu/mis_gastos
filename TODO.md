@@ -188,7 +188,7 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: al borrar la cuenta, el OWNER pasa al miembro con `joinedAt` más antiguo
 - [x] 🔴 Test: al borrar la cuenta siendo el único miembro, el presupuesto se elimina en cascada
 - [ ] 🔴 Test: el borrado de usuario anonimiza (`displayName = "Usuario Eliminado"`) y preserva transacciones y contribuciones
-  - **Nota:** la anonimización ya está cubierta (`delete-me.int.test.ts`); la preservación de transacciones y contribuciones se añadirá a ese test en las Fases 4 y 5, cuando existan esos modelos.
+  - **Nota:** anonimización y preservación de transacciones cubiertas (`delete-me.int.test.ts`); falta la de contribuciones (Fase 5).
 - [x] 🟢 Implementar `DELETE /me` con el fallback de propiedad y el soft delete
   - **Nota:** `User.deletedAt`; la fila queda anonimizada (`displayName = "Usuario Eliminado"`, avatar nulo, email `deleted-<id>@deleted.invalid` para liberar el original) y se borran sus identidades. `syncUser` responde 401 a una cuenta borrada y nunca la reactiva. Una transacción con bloqueos presupuestos (ordenados) → usuario.
 - [x] Revocar la sesión / eliminar el usuario en Supabase Auth tras el borrado
@@ -209,12 +209,14 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [ ] 🟢 Implementar la agregación mensual por categoría
 
 ### 4.2 Transacciones
-- [ ] Añadir el modelo `Transaction` (con `createdById` y tipo) y migrar
-- [ ] 🔴 Test: OWNER/EDITOR/LIMITED_EDITOR pueden crear transacciones; VIEWER recibe `403`
-- [ ] 🔴 Test: LIMITED_EDITOR solo edita/borra sus propias transacciones
-- [ ] 🔴 Test: no se puede crear una transacción en una categoría inactiva o de otro presupuesto
-- [ ] 🔴 Test: los importes se validan como decimales con 2 decimales como máximo (sin floats)
-- [ ] 🟢 Implementar el CRUD de transacciones
+- [x] Añadir el modelo `Transaction` (con `createdById` y tipo) y migrar
+  - **Decisión:** sin campo de tipo: solo gastos (modelo base cero; el asignado son los límites de las categorías). Los ingresos podrán añadirse más adelante sin romper nada. `budgetId` redundante para listar/agregar sin join; `date` es `@db.Date` (`YYYY-MM-DD`).
+- [x] 🔴 Test: OWNER/EDITOR/LIMITED_EDITOR pueden crear transacciones; VIEWER recibe `403`
+- [x] 🔴 Test: LIMITED_EDITOR solo edita/borra sus propias transacciones
+- [x] 🔴 Test: no se puede crear una transacción en una categoría inactiva o de otro presupuesto
+- [x] 🔴 Test: los importes se validan como decimales con 2 decimales como máximo (sin floats)
+- [x] 🟢 Implementar el CRUD de transacciones
+  - **Nota:** importe > 0 (`PositiveMoneySchema`); fecha `YYYY-MM-DD`. Categoría de otro presupuesto/inexistente → 404, inactiva → 409 (al crear y al moverla; una transacción ya existente en una categoría desactivada sigue siendo editable). LIMITED_EDITOR solo modifica las suyas (`transaction:edit-any` decide), tampoco las de autor borrado.
 - [ ] 🔴 Test: paginación por cursor (`limit` 20 por defecto, `nextCursor`, orden estable `date DESC, id DESC`)
 - [ ] 🔴 Test: filtros por categoría y rango de fechas
 - [ ] 🟢 Implementar el listado paginado

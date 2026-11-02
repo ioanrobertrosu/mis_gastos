@@ -42,6 +42,7 @@ model User {
   identities         Identity[]
   memberships        BudgetMember[]
   invitationsCreated OneTimeInvite[]
+  transactions       Transaction[]
 }
 
 // Proveedor de login vinculado (Google, Apple…). Registro informativo: User.id ya es el `sub`.
@@ -65,9 +66,10 @@ model Budget {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members     BudgetMember[]
-  invitations OneTimeInvite[]
-  categories  Category[]
+  members      BudgetMember[]
+  invitations  OneTimeInvite[]
+  categories   Category[]
+  transactions Transaction[]
 }
 
 model Category {
@@ -82,9 +84,35 @@ model Category {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  budget       Budget        @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
 
   @@index([budgetId])
+}
+
+/// Gasto en una categoría (modelo base cero: solo gastos; el asignado son los límites).
+model Transaction {
+  id          String   @id @default(uuid())
+  // Redundante con la categoría (que nunca cambia de presupuesto): permite listar y agregar
+  // por presupuesto sin join.
+  budgetId    String
+  categoryId  String
+  // Autor; los usuarios borrados se conservan anonimizados, así que la referencia se mantiene.
+  createdById String?
+  amount      Decimal  @db.Decimal(12, 2)
+  description String?
+  date        DateTime @db.Date
+  // Solo marca informativa: las recurrentes se registran a mano cada mes.
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  budget    Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  category  Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([budgetId, date(sort: Desc), id(sort: Desc)])
+  @@index([categoryId, date])
 }
 
 model BudgetMember {

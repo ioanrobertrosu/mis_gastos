@@ -7,6 +7,11 @@ import { Type } from '@fastify/type-provider-typebox';
  */
 export const MoneySchema = Type.String({ pattern: String.raw`^\d{1,10}(\.\d{1,2})?$` });
 
+/** Como `MoneySchema`, pero mayor que cero (`"0"`, `"0.00"` no valen). */
+export const PositiveMoneySchema = Type.String({
+  pattern: String.raw`^(?!0+(\.0{1,2})?$)\d{1,10}(\.\d{1,2})?$`,
+});
+
 /** Formato de salida de un importe: siempre con 2 decimales. */
 export function formatMoney(amount: { toFixed(digits: number): string }): string {
   return amount.toFixed(2);
