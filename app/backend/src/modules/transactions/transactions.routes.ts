@@ -15,6 +15,7 @@ const TransactionSchema = Type.Object({
   amount: Type.String(),
   description: Type.Union([Type.String(), Type.Null()]),
   date: Type.String({ format: 'date' }),
+  isRecurring: Type.Boolean(),
   createdById: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String({ format: 'date-time' }),
   updatedAt: Type.String({ format: 'date-time' }),
@@ -30,6 +31,7 @@ const CreateTransactionBodySchema = Type.Object(
     amount: PositiveMoneySchema,
     date: DateSchema,
     description: Type.Optional(DescriptionSchema),
+    isRecurring: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );
@@ -40,6 +42,7 @@ const UpdateTransactionBodySchema = Type.Object(
     amount: Type.Optional(PositiveMoneySchema),
     date: Type.Optional(DateSchema),
     description: Type.Optional(Type.Union([DescriptionSchema, Type.Null()])),
+    isRecurring: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false, minProperties: 1 },
 );
@@ -56,6 +59,7 @@ const ListTransactionsQuerySchema = Type.Object(
     categoryId: Type.Optional(Type.String({ format: 'uuid' })),
     from: Type.Optional(DateSchema),
     to: Type.Optional(DateSchema),
+    isRecurring: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );

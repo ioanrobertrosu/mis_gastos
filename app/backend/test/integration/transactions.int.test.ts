@@ -68,6 +68,7 @@ describe('POST /api/v1/budgets/:id/transactions', () => {
       amount: '12.50',
       description: 'Mercadona',
       date: '2026-10-15',
+      isRecurring: false,
       createdById: user.sub,
       createdAt: ISO_DATE,
       updatedAt: ISO_DATE,
@@ -211,6 +212,72 @@ describe('POST /api/v1/budgets/:id/transactions', () => {
     const response = await create(ANA, budgetId, payload);
 
     expect(response.statusCode).toBe(400);
+  });
+});
+
+describe('isRecurring (marca informativa)', () => {
+  it('se acepta al crear y por defecto es false', async () => {
+    const { budgetId, categoryId } = await familyBudget();
+
+    const recurring = await create(ANA, budgetId, {
+      categoryId,
+      amount: '400',
+      date: '2026-10-01',
+      description: 'Alquiler',
+      isRecurring: true,
+    });
+    const once = await create(ANA, budgetId, { categoryId, amount: '5', date: '2026-10-02' });
+
+    expect(recurring.statusCode).toBe(201);
+    expect(recurring.json()).toMatchObject({ isRecurring: true });
+    expect(once.json()).toMatchObject({ isRecurring: false });
+    await expect(storedTransaction(recurring.json().id)).resolves.toMatchObject({
+      isRecurring: true,
+    });
+  });
+
+  it('se puede cambiar al editar', async () => {
+    const { budgetId, categoryId } = await familyBudget();
+    const id = await seedTransaction(budgetId, categoryId, { createdBy: DANI });
+
+    const response = await api(DANI, 'PATCH', `/budgets/${budgetId}/transactions/${id}`, {
+      isRecurring: true,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ isRecurring: true });
+    await expect(storedTransaction(id)).resolves.toMatchObject({ isRecurring: true });
+  });
+
+  it('no genera transacciones automáticamente: solo se guarda la marca', async () => {
+    const { budgetId, categoryId } = await familyBudget();
+
+    await create(ANA, budgetId, {
+      categoryId,
+      amount: '400',
+      date: '2026-10-01',
+      isRecurring: true,
+    });
+
+    await expect(testPrisma.transaction.count({ where: { budgetId } })).resolves.toBe(1);
+  });
+
+  it.each([
+    ['texto en vez de booleano', { isRecurring: 'true' }],
+    ['número en vez de booleano', { isRecurring: 1 }],
+    ['null', { isRecurring: null }],
+  ])('rechaza con 400: %s', async (_case, override) => {
+    const { budgetId, categoryId } = await familyBudget();
+
+    const response = await create(ANA, budgetId, {
+      categoryId,
+      amount: '10',
+      date: '2026-10-15',
+      ...override,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
   });
 });
 

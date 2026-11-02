@@ -278,7 +278,25 @@ describe('GET /api/v1/budgets/:id/transactions — filtros', () => {
     expect(result).toEqual({ items: [], nextCursor: null });
   });
 
+  it('filtra por isRecurring (true y false) y lo incluye en cada elemento', async () => {
+    const { budgetId, categoryId } = await budget();
+    const rows = await seedMany(budgetId, categoryId, [day(1), day(2), day(3), day(4)]);
+    const recurringIds = [rows[0]!.id, rows[2]!.id];
+    await testPrisma.transaction.updateMany({
+      where: { id: { in: recurringIds } },
+      data: { isRecurring: true },
+    });
+
+    const recurring = await page(ANA, budgetId, 'isRecurring=true');
+    const oneOff = await page(ANA, budgetId, 'isRecurring=false');
+
+    expect(recurring.items.map(({ id }) => id)).toEqual(recurringIds);
+    expect(recurring.items.every((item) => 'isRecurring' in item && item.isRecurring)).toBe(true);
+    expect(oneOff.items.map(({ id }) => id)).toEqual([rows[1]!.id, rows[3]!.id]);
+  });
+
   it.each([
+    ['isRecurring no booleano', 'isRecurring=quizas'],
     ['from posterior a to', `from=${day(10)}&to=${day(5)}`],
     ['fecha inválida', 'from=2026-02-30'],
     ['fecha con otro formato', 'to=05/10/2026'],

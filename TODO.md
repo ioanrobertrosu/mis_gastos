@@ -223,8 +223,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** `GET /budgets/:id/transactions` → `{ items, nextCursor }`. Cursor keyset opaco (base64url de `[date, id]`), robusto ante borrados/altas entre páginas; `limit` 1–100 (20 por defecto); filtros `categoryId`, `from`, `to` (inclusivos). Cursor ilegible o `from > to` → 400 `VALIDATION_ERROR`.
 - [x] ❓ Definir el comportamiento de `isRecurring` (plantilla + generación mensual o solo marca informativa)
   - **Decisión:** solo marca informativa. Las transacciones recurrentes se registran a mano cada mes, porque el importe real puede diferir del previsto (ej. 400 € presupuestados → 300 € pagados).
-- [ ] 🔴 Test: `isRecurring` se acepta al crear/editar y el listado permite filtrar por él
-- [ ] 🟢 Implementar el campo y el filtro `isRecurring`
+- [x] 🔴 Test: `isRecurring` se acepta al crear/editar y el listado permite filtrar por él
+- [x] 🟢 Implementar el campo y el filtro `isRecurring`
 
 ### 4.3 Resumen del presupuesto
 - [ ] 🔴 Test: `GET /budgets/:id/summary?month=YYYY-MM` devuelve el asignado, el gastado y el restante (base cero)

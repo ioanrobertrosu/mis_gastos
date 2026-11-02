@@ -16,6 +16,7 @@ const transactionSelect = {
   amount: true,
   description: true,
   date: true,
+  isRecurring: true,
   createdById: true,
   createdAt: true,
   updatedAt: true,
@@ -30,6 +31,8 @@ export interface TransactionView {
   description: string | null;
   /** `YYYY-MM-DD`. */
   date: string;
+  /** Solo marca informativa: no genera transacciones. */
+  isRecurring: boolean;
   createdById: string | null;
   createdAt: string;
   updatedAt: string;
@@ -40,6 +43,7 @@ export interface TransactionInput {
   amount?: string;
   description?: string | null;
   date?: string;
+  isRecurring?: boolean;
 }
 
 /** Quién actúa y con qué rol en el presupuesto (lo deja `requirePermission` en la petición). */
@@ -118,6 +122,7 @@ export interface TransactionFilters {
   /** `YYYY-MM-DD`, ambos extremos incluidos. */
   from?: string;
   to?: string;
+  isRecurring?: boolean;
 }
 
 export interface TransactionPage {
@@ -133,7 +138,7 @@ export interface TransactionPage {
 export async function listTransactions(
   prisma: PrismaClient,
   budgetId: string,
-  { limit = DEFAULT_PAGE_SIZE, cursor, categoryId, from, to }: TransactionFilters,
+  { limit = DEFAULT_PAGE_SIZE, cursor, categoryId, from, to, isRecurring }: TransactionFilters,
 ): Promise<TransactionPage> {
   if (from !== undefined && to !== undefined && from > to) {
     throw new ValidationError('La fecha inicial no puede ser posterior a la final');
@@ -144,6 +149,7 @@ export async function listTransactions(
     where: {
       budgetId,
       ...(categoryId === undefined ? {} : { categoryId }),
+      ...(isRecurring === undefined ? {} : { isRecurring }),
       ...(from === undefined && to === undefined
         ? {}
         : {
