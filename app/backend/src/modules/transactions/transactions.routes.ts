@@ -1,4 +1,5 @@
 import { type FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
+import { DateSchema } from '../../shared/date.js';
 import { PositiveMoneySchema } from '../../shared/money.js';
 import { IdParamsSchema } from '../../shared/schemas.js';
 import {
@@ -22,8 +23,6 @@ const TransactionSchema = Type.Object({
 });
 
 const DescriptionSchema = Type.String({ minLength: 1, maxLength: 200, pattern: String.raw`\S` });
-// Día natural, sin hora: el cliente envía la fecha local del gasto.
-const DateSchema = Type.String({ format: 'date' });
 
 const CreateTransactionBodySchema = Type.Object(
   {

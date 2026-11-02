@@ -236,9 +236,11 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 
 ## Fase 5 — Metas de ahorro
 
-- [ ] Añadir `Goal`, `GoalContribution` y el enum `GoalStatus`; migrar
-- [ ] 🔴 Test: OWNER/EDITOR crean, editan y borran metas; LIMITED_EDITOR y VIEWER no
-- [ ] 🟢 Implementar el CRUD de metas
+- [x] Añadir `Goal`, `GoalContribution` y el enum `GoalStatus`; migrar
+  - **Nota:** `GoalContribution.userId` opcional con `SetNull` (como el autor de las transacciones) en lugar del `Cascade` del PRD: un borrado físico de usuario no debe descuadrar `currentAmount`. `deadline` es `@db.Date`.
+- [x] 🔴 Test: OWNER/EDITOR crean, editan y borran metas; LIMITED_EDITOR y VIEWER no
+- [x] 🟢 Implementar el CRUD de metas
+  - **Nota:** `status` y `currentAmount` no se editan: el estado se deriva (`REACHED` si lo ahorrado ≥ objetivo) y `archived: true/false` archiva/desarchiva recalculándolo. La edición bloquea la fila de la meta (`FOR UPDATE`) para no competir con las contribuciones. Fechas compartidas en `shared/date.ts`.
 - [ ] 🔴 Test: una contribución incrementa `currentAmount` de forma atómica (`increment` en transacción)
 - [ ] 🔴 Test: contribuciones concurrentes no pierden actualizaciones
 - [ ] 🔴 Test: al alcanzar `targetAmount` el estado pasa a `REACHED`

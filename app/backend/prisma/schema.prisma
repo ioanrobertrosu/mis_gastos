@@ -43,6 +43,7 @@ model User {
   memberships        BudgetMember[]
   invitationsCreated OneTimeInvite[]
   transactions       Transaction[]
+  contributions      GoalContribution[]
 }
 
 // Proveedor de login vinculado (Google, Apple…). Registro informativo: User.id ya es el `sub`.
@@ -70,6 +71,7 @@ model Budget {
   invitations  OneTimeInvite[]
   categories   Category[]
   transactions Transaction[]
+  goals        Goal[]
 }
 
 model Category {
@@ -144,4 +146,42 @@ model OneTimeInvite {
 
   @@index([budgetId])
   @@index([createdById])
+}
+
+enum GoalStatus {
+  IN_PROGRESS
+  REACHED
+  ARCHIVED
+}
+
+/// Meta de ahorro del presupuesto. `currentAmount` es la suma de sus contribuciones.
+model Goal {
+  id            String     @id @default(uuid())
+  budgetId      String
+  title         String
+  targetAmount  Decimal    @db.Decimal(12, 2)
+  currentAmount Decimal    @default(0) @db.Decimal(12, 2)
+  deadline      DateTime?  @db.Date
+  status        GoalStatus @default(IN_PROGRESS)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  budget        Budget             @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  contributions GoalContribution[]
+
+  @@index([budgetId])
+}
+
+model GoalContribution {
+  id        String   @id @default(uuid())
+  goalId    String
+  // Autor; los usuarios borrados se conservan anonimizados, así que la referencia se mantiene.
+  userId    String?
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  goal Goal  @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([goalId, createdAt(sort: Desc)])
 }

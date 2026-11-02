@@ -5,6 +5,7 @@ import {
   NotFoundError,
   ValidationError,
 } from '../../shared/errors.js';
+import { formatDate, parseDate } from '../../shared/date.js';
 import { formatMoney } from '../../shared/money.js';
 import { can } from '../budgets/permissions.js';
 import { categoryNotFound } from '../categories/errors.js';
@@ -60,15 +61,6 @@ function toView(transaction: Transaction): TransactionView {
     createdAt: transaction.createdAt.toISOString(),
     updatedAt: transaction.updatedAt.toISOString(),
   };
-}
-
-/** Las columnas `@db.Date` se leen y escriben como medianoche UTC. */
-function parseDate(date: string): Date {
-  return new Date(`${date}T00:00:00.000Z`);
-}
-
-function formatDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }
 
 function toData({ date, ...data }: TransactionInput) {

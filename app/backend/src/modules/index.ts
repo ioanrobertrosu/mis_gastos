@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { budgetRoutes } from './budgets/budgets.routes.js';
 import { categoryRoutes } from './categories/categories.routes.js';
+import { goalRoutes } from './goals/goals.routes.js';
 import { invitationRoutes } from './invitations/invitations.routes.js';
 import { memberRoutes } from './members/members.routes.js';
 import { transactionRoutes } from './transactions/transactions.routes.js';
@@ -14,4 +15,5 @@ export const apiRoutes: FastifyPluginAsync = async (app) => {
   await app.register(memberRoutes);
   await app.register(categoryRoutes);
   await app.register(transactionRoutes);
+  await app.register(goalRoutes);
 };
