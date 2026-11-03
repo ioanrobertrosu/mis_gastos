@@ -263,8 +263,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: cada mutación relevante registra su actividad dentro de la misma transacción de BD
 - [x] 🟢 Implementar el servicio `logActivity` e integrarlo en los módulos existentes
   - **Nota:** `modules/activity/activity.service.ts` (`logActivity(tx, …)` + `changesBetween`). Cada mutación registra dentro de su transacción (las que no tenían, ahora la tienen); sin cambios reales o con la petición rechazada no se registra nada. Columna `seq` (autoincremental) para ordenar: varias entradas de una transacción comparten `createdAt`. Sin invitaciones creadas/revocadas en el muro (solo `MEMBER_JOINED`).
-- [ ] 🔴 Test: `GET /budgets/:id/activity` paginado por cursor
-- [ ] 🟢 Implementar el muro de actividad
+- [x] 🔴 Test: `GET /budgets/:id/activity` paginado por cursor
+- [x] 🟢 Implementar el muro de actividad
+  - **Nota:** `GET /budgets/:id/activity` → `{ items, nextCursor }`, más reciente primero; cursor keyset opaco sobre `seq`; `limit` 1–100 (20). Cada entrada con `actor` (perfil público, anonimizado si borró la cuenta, o `null`). Sin filtro por acción por ahora.
 
 ### 6.2 Alertas inteligentes
 - [ ] 🔴 Test: se genera la alerta `CATEGORY_90_PERCENT` al superar el 90 % del límite (una sola vez por mes y categoría)
