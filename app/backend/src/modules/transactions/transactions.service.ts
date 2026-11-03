@@ -7,6 +7,7 @@ import {
 } from '../../shared/errors.js';
 import { formatDate, parseDate } from '../../shared/date.js';
 import { formatMoney } from '../../shared/money.js';
+import { changesBetween, hasChanges, logActivity } from '../activity/activity.service.js';
 import { can } from '../budgets/permissions.js';
 import { categoryNotFound } from '../categories/errors.js';
 import { decodeCursor, encodeCursor } from './cursor.js';
@@ -73,11 +74,11 @@ function transactionNotFound(): NotFoundError {
 
 /** La categoría debe ser de este presupuesto (si no, 404) y estar activa (si no, 409). */
 async function assertUsableCategory(
-  prisma: PrismaClient,
+  tx: Prisma.TransactionClient,
   budgetId: string,
   categoryId: string,
 ): Promise<void> {
-  const category = await prisma.category.findFirst({
+  const category = await tx.category.findFirst({
     where: { id: categoryId, budgetId },
     select: { isActive: true },
   });
@@ -86,23 +87,24 @@ async function assertUsableCategory(
 }
 
 /**
- * Comprueba que la transacción es de este presupuesto y que el actor puede modificarla:
+ * Devuelve la transacción si es de este presupuesto y el actor puede modificarla:
  * OWNER y EDITOR cualquiera; LIMITED_EDITOR solo las que creó él.
  */
-async function assertEditable(
-  prisma: PrismaClient,
+async function findEditable(
+  tx: Prisma.TransactionClient,
   budgetId: string,
   transactionId: string,
   actor: Actor,
-): Promise<void> {
-  const transaction = await prisma.transaction.findFirst({
+): Promise<TransactionView> {
+  const transaction = await tx.transaction.findFirst({
     where: { id: transactionId, budgetId },
-    select: { createdById: true },
+    select: transactionSelect,
   });
   if (!transaction) throw transactionNotFound();
   if (!can(actor.role, 'transaction:edit-any') && transaction.createdById !== actor.userId) {
     throw new ForbiddenError('Solo puedes modificar las transacciones que has creado');
   }
+  return toView(transaction);
 }
 
 export const DEFAULT_PAGE_SIZE = 20;
@@ -179,13 +181,26 @@ export async function createTransaction(
   createdById: string,
   { date, ...data }: TransactionInput & { categoryId: string; amount: string; date: string },
 ): Promise<TransactionView> {
-  await assertUsableCategory(prisma, budgetId, data.categoryId);
-  return toView(
-    await prisma.transaction.create({
-      data: { ...data, date: parseDate(date), budgetId, createdById },
-      select: transactionSelect,
-    }),
-  );
+  return prisma.$transaction(async (tx) => {
+    await assertUsableCategory(tx, budgetId, data.categoryId);
+    const transaction = toView(
+      await tx.transaction.create({
+        data: { ...data, date: parseDate(date), budgetId, createdById },
+        select: transactionSelect,
+      }),
+    );
+    await logActivity(tx, {
+      budgetId,
+      userId: createdById,
+      action: 'TRANSACTION_CREATED',
+      metadata: {
+        transactionId: transaction.id,
+        categoryId: transaction.categoryId,
+        amount: transaction.amount,
+      },
+    });
+    return transaction;
+  });
 }
 
 export async function getTransaction(
@@ -209,17 +224,36 @@ export async function updateTransaction(
   actor: Actor,
   data: TransactionInput,
 ): Promise<TransactionView> {
-  await assertEditable(prisma, budgetId, transactionId, actor);
-  if (data.categoryId !== undefined) {
-    await assertUsableCategory(prisma, budgetId, data.categoryId);
-  }
-  return toView(
-    await prisma.transaction.update({
-      where: { id: transactionId },
-      data: toData(data),
-      select: transactionSelect,
-    }),
-  );
+  return prisma.$transaction(async (tx) => {
+    const before = await findEditable(tx, budgetId, transactionId, actor);
+    if (data.categoryId !== undefined) {
+      await assertUsableCategory(tx, budgetId, data.categoryId);
+    }
+    const after = toView(
+      await tx.transaction.update({
+        where: { id: transactionId },
+        data: toData(data),
+        select: transactionSelect,
+      }),
+    );
+
+    const changes = changesBetween(before, {
+      categoryId: after.categoryId,
+      amount: after.amount,
+      description: after.description,
+      date: after.date,
+      isRecurring: after.isRecurring,
+    });
+    if (hasChanges(changes)) {
+      await logActivity(tx, {
+        budgetId,
+        userId: actor.userId,
+        action: 'TRANSACTION_UPDATED',
+        metadata: { transactionId, changes },
+      });
+    }
+    return after;
+  });
 }
 
 /** El permiso (`transaction:edit-own`) lo comprueba la ruta; la autoría, este servicio. */
@@ -229,6 +263,18 @@ export async function deleteTransaction(
   transactionId: string,
   actor: Actor,
 ): Promise<void> {
-  await assertEditable(prisma, budgetId, transactionId, actor);
-  await prisma.transaction.delete({ where: { id: transactionId } });
+  await prisma.$transaction(async (tx) => {
+    const transaction = await findEditable(tx, budgetId, transactionId, actor);
+    await tx.transaction.delete({ where: { id: transactionId } });
+    await logActivity(tx, {
+      budgetId,
+      userId: actor.userId,
+      action: 'TRANSACTION_DELETED',
+      metadata: {
+        transactionId,
+        categoryId: transaction.categoryId,
+        amount: transaction.amount,
+      },
+    });
+  });
 }

@@ -1,6 +1,7 @@
 import type { Currency, Prisma, PrismaClient, Role } from '../../generated/prisma/client.js';
 import { LimitExceededError } from '../../shared/errors.js';
 import { LOCKING_TRANSACTION } from '../../shared/transactions.js';
+import { changesBetween, hasChanges, logActivity } from '../activity/activity.service.js';
 import { budgetNotFound } from './errors.js';
 import { MAX_BUDGETS_PER_USER } from './limits.js';
 
@@ -65,6 +66,12 @@ export async function createBudget(
       data: { ...data, members: { create: { userId, role: 'OWNER' } } },
       select: { id: true },
     });
+    await logActivity(tx, {
+      budgetId: budget.id,
+      userId,
+      action: 'BUDGET_CREATED',
+      metadata: { name: data.name },
+    });
     return toView(
       await tx.budgetMember.findUniqueOrThrow({
         where: { userId_budgetId: { userId, budgetId: budget.id } },
@@ -104,7 +111,18 @@ export async function updateBudget(
   budgetId: string,
   data: { name?: string; currency?: Currency },
 ): Promise<BudgetView> {
-  await prisma.budget.update({ where: { id: budgetId }, data, select: { id: true } });
+  await prisma.$transaction(async (tx) => {
+    const before = await tx.budget.findUniqueOrThrow({
+      where: { id: budgetId },
+      select: { name: true, currency: true },
+    });
+    await tx.budget.update({ where: { id: budgetId }, data, select: { id: true } });
+
+    const changes = changesBetween(before, data);
+    if (hasChanges(changes)) {
+      await logActivity(tx, { budgetId, userId, action: 'BUDGET_UPDATED', metadata: { changes } });
+    }
+  });
   return getBudget(prisma, userId, budgetId);
 }
 

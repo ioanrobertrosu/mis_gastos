@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { LOCKING_TRANSACTION } from '../../shared/transactions.js';
+import { logActivity } from '../activity/activity.service.js';
 
 export const DELETED_USER_NAME = 'Usuario Eliminado';
 
@@ -37,18 +38,33 @@ export async function deleteAccount(prisma: PrismaClient, userId: string): Promi
       memberships.map(({ budgetId }) => budgetId).filter((id) => !locked.includes(id)),
     );
 
+    const reason = 'ACCOUNT_DELETED';
     for (const { budgetId, role } of memberships) {
-      if (role !== 'OWNER') continue;
-      const successor = await tx.budgetMember.findFirst({
-        where: { budgetId, userId: { not: userId } },
-        orderBy: [{ joinedAt: 'asc' }, { id: 'asc' }],
-        select: { id: true },
-      });
-      if (successor) {
+      if (role === 'OWNER') {
+        const successor = await tx.budgetMember.findFirst({
+          where: { budgetId, userId: { not: userId } },
+          orderBy: [{ joinedAt: 'asc' }, { id: 'asc' }],
+          select: { id: true, userId: true },
+        });
+        if (!successor) {
+          // Único miembro: el presupuesto (y su actividad) se borra en cascada.
+          await tx.budget.delete({ where: { id: budgetId } });
+          continue;
+        }
         await tx.budgetMember.update({ where: { id: successor.id }, data: { role: 'OWNER' } });
-      } else {
-        await tx.budget.delete({ where: { id: budgetId } });
+        await logActivity(tx, {
+          budgetId,
+          userId,
+          action: 'OWNERSHIP_TRANSFERRED',
+          metadata: { from: userId, to: successor.userId, reason },
+        });
       }
+      await logActivity(tx, {
+        budgetId,
+        userId,
+        action: 'MEMBER_LEFT',
+        metadata: { userId, reason },
+      });
     }
 
     await tx.budgetMember.deleteMany({ where: { userId } });

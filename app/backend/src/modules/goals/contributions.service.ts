@@ -2,7 +2,8 @@ import type { PrismaClient } from '../../generated/prisma/client.js';
 import { ConflictError } from '../../shared/errors.js';
 import { formatMoney } from '../../shared/money.js';
 import { LOCKING_TRANSACTION } from '../../shared/transactions.js';
-import { getGoal, type GoalView, goalNotFound, statusFor } from './goals.service.js';
+import { logActivity } from '../activity/activity.service.js';
+import { getGoal, type GoalView, goalNotFound, logIfReached, statusFor } from './goals.service.js';
 
 export interface ContributionView {
   id: string;
@@ -66,7 +67,7 @@ export async function addContribution(
     await tx.$queryRaw`SELECT 1 FROM "Goal" WHERE "id" = ${goalId} FOR UPDATE`;
     const goal = await tx.goal.findFirst({
       where: { id: goalId, budgetId },
-      select: { status: true },
+      select: { status: true, title: true },
     });
     if (!goal) throw goalNotFound();
     if (goal.status === 'ARCHIVED') {
@@ -82,10 +83,17 @@ export async function addContribution(
       data: { currentAmount: { increment: amount } },
       select: { currentAmount: true, targetAmount: true },
     });
-    await tx.goal.update({
-      where: { id: goalId },
-      data: { status: statusFor(updated.currentAmount, updated.targetAmount, false) },
+    const status = statusFor(updated.currentAmount, updated.targetAmount, false);
+    await tx.goal.update({ where: { id: goalId }, data: { status } });
+
+    const target = { goalId, title: goal.title };
+    await logActivity(tx, {
+      budgetId,
+      userId,
+      action: 'GOAL_CONTRIBUTION',
+      metadata: { ...target, contributionId: created.id, amount: formatMoney(created.amount) },
     });
+    await logIfReached(tx, { budgetId, userId, ...target }, goal.status, status);
     return created;
   }, LOCKING_TRANSACTION);
 

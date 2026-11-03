@@ -6,6 +6,7 @@ import {
   NotFoundError,
 } from '../../shared/errors.js';
 import { LOCKING_TRANSACTION } from '../../shared/transactions.js';
+import { logActivity } from '../activity/activity.service.js';
 import { type BudgetView, getBudget } from '../budgets/budgets.service.js';
 import { MAX_BUDGETS_PER_USER, MAX_MEMBERS_PER_BUDGET } from '../budgets/limits.js';
 
@@ -97,6 +98,12 @@ export async function acceptInvitation(
       data: { userId, budgetId: invite.budgetId, role: invite.role },
     });
     await tx.oneTimeInvite.update({ where: { token }, data: { isUsed: true } });
+    await logActivity(tx, {
+      budgetId: invite.budgetId,
+      userId,
+      action: 'MEMBER_JOINED',
+      metadata: { userId, role: invite.role },
+    });
     return invite.budgetId;
   }, LOCKING_TRANSACTION);
 

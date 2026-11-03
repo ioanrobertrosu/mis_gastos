@@ -96,7 +96,7 @@ export const categoryRoutes: FastifyPluginAsyncTypebox = async (app) => {
     },
     async (request, reply) => {
       reply.code(201);
-      return createCategory(app.prisma, request.params.id, request.body);
+      return createCategory(app.prisma, request.params.id, request.user.sub, request.body);
     },
   );
 
@@ -111,7 +111,13 @@ export const categoryRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('category:manage'),
     },
     (request) =>
-      updateCategory(app.prisma, request.params.id, request.params.categoryId, request.body),
+      updateCategory(
+        app.prisma,
+        request.params.id,
+        request.params.categoryId,
+        request.user.sub,
+        request.body,
+      ),
   );
 
   app.delete(
@@ -121,7 +127,12 @@ export const categoryRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('category:manage'),
     },
     async (request, reply) => {
-      await deactivateCategory(app.prisma, request.params.id, request.params.categoryId);
+      await deactivateCategory(
+        app.prisma,
+        request.params.id,
+        request.params.categoryId,
+        request.user.sub,
+      );
       return reply.code(204).send();
     },
   );

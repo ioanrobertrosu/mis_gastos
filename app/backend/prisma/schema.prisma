@@ -44,6 +44,7 @@ model User {
   invitationsCreated OneTimeInvite[]
   transactions       Transaction[]
   contributions      GoalContribution[]
+  activities         ActivityLog[]
 }
 
 // Proveedor de login vinculado (Google, Apple…). Registro informativo: User.id ya es el `sub`.
@@ -72,6 +73,7 @@ model Budget {
   categories   Category[]
   transactions Transaction[]
   goals        Goal[]
+  activities   ActivityLog[]
 }
 
 model Category {
@@ -184,4 +186,48 @@ model GoalContribution {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([goalId, createdAt(sort: Desc)])
+}
+
+/// Catálogo cerrado de acciones del muro de actividad.
+enum ActivityAction {
+  BUDGET_CREATED
+  BUDGET_UPDATED
+  MEMBER_JOINED
+  MEMBER_ROLE_CHANGED
+  MEMBER_REMOVED
+  MEMBER_LEFT
+  OWNERSHIP_TRANSFERRED
+  CATEGORY_CREATED
+  CATEGORY_UPDATED
+  CATEGORY_LIMIT_UPDATED
+  CATEGORY_DEACTIVATED
+  CATEGORY_REACTIVATED
+  TRANSACTION_CREATED
+  TRANSACTION_UPDATED
+  TRANSACTION_DELETED
+  GOAL_CREATED
+  GOAL_UPDATED
+  GOAL_ARCHIVED
+  GOAL_DELETED
+  GOAL_CONTRIBUTION
+  GOAL_REACHED
+}
+
+/// Muro de actividad del presupuesto. Se escribe en la misma transacción que la mutación.
+model ActivityLog {
+  id        String         @id @default(uuid())
+  budgetId  String
+  // Quién lo hizo; los usuarios borrados se conservan anonimizados, así que la referencia se mantiene.
+  userId    String?
+  action    ActivityAction
+  metadata  Json?
+  createdAt DateTime       @default(now())
+  // Orden estable: varias entradas de una misma transacción comparten `createdAt` (hora de
+  // inicio de la transacción), así que el muro se ordena y pagina por esta secuencia.
+  seq       Int            @unique @default(autoincrement())
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([budgetId, seq(sort: Desc)])
 }

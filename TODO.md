@@ -256,10 +256,13 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 ## Fase 6 — Actividad, alertas y exportación
 
 ### 6.1 ActivityLog
-- [ ] Añadir el modelo `ActivityLog` y migrar
-- [ ] Definir el catálogo de acciones como enum/constantes (`MEMBER_JOINED`, `CATEGORY_LIMIT_UPDATED`, `GOAL_REACHED`, `TRANSACTION_CREATED`, …)
-- [ ] 🔴 Test: cada mutación relevante registra su actividad dentro de la misma transacción de BD
-- [ ] 🟢 Implementar el servicio `logActivity` e integrarlo en los módulos existentes
+- [x] Añadir el modelo `ActivityLog` y migrar
+  - **Nota:** `userId` (autor) opcional con `SetNull`; índice `(budgetId, createdAt DESC, id DESC)` para el muro.
+- [x] Definir el catálogo de acciones como enum/constantes (`MEMBER_JOINED`, `CATEGORY_LIMIT_UPDATED`, `GOAL_REACHED`, `TRANSACTION_CREATED`, …)
+  - **Decisión:** enum `ActivityAction` en la BD (21 acciones de presupuesto, miembros, categorías, transacciones y metas). Las alertas de la 6.2 se añadirán al enum allí.
+- [x] 🔴 Test: cada mutación relevante registra su actividad dentro de la misma transacción de BD
+- [x] 🟢 Implementar el servicio `logActivity` e integrarlo en los módulos existentes
+  - **Nota:** `modules/activity/activity.service.ts` (`logActivity(tx, …)` + `changesBetween`). Cada mutación registra dentro de su transacción (las que no tenían, ahora la tienen); sin cambios reales o con la petición rechazada no se registra nada. Columna `seq` (autoincremental) para ordenar: varias entradas de una transacción comparten `createdAt`. Sin invitaciones creadas/revocadas en el muro (solo `MEMBER_JOINED`).
 - [ ] 🔴 Test: `GET /budgets/:id/activity` paginado por cursor
 - [ ] 🟢 Implementar el muro de actividad
 

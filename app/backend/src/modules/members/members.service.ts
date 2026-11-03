@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient, Role } from '../../generated/prisma/client.js';
 import { ConflictError, NotFoundError } from '../../shared/errors.js';
 import { LOCKING_TRANSACTION } from '../../shared/transactions.js';
+import { logActivity } from '../activity/activity.service.js';
 import { type BudgetView, getBudget } from '../budgets/budgets.service.js';
 import { budgetNotFound, roleForbidden } from '../budgets/errors.js';
 
@@ -100,13 +101,20 @@ export async function changeMemberRole(
     if (!current) throw memberNotFound();
     if (current === 'OWNER') throw ownerConflict();
 
-    return toView(
-      await tx.budgetMember.update({
-        where: { userId_budgetId: { userId, budgetId } },
-        data: { role },
-        select: memberSelect,
-      }),
-    );
+    const member = await tx.budgetMember.update({
+      where: { userId_budgetId: { userId, budgetId } },
+      data: { role },
+      select: memberSelect,
+    });
+    if (current !== role) {
+      await logActivity(tx, {
+        budgetId,
+        userId: ownerId,
+        action: 'MEMBER_ROLE_CHANGED',
+        metadata: { userId, from: current, to: role },
+      });
+    }
+    return toView(member);
   }, LOCKING_TRANSACTION);
 }
 
@@ -124,6 +132,12 @@ export async function removeMember(
     if (current === 'OWNER') throw ownerConflict();
 
     await tx.budgetMember.delete({ where: { userId_budgetId: { userId, budgetId } } });
+    await logActivity(tx, {
+      budgetId,
+      userId: ownerId,
+      action: 'MEMBER_REMOVED',
+      metadata: { userId },
+    });
   }, LOCKING_TRANSACTION);
 }
 
@@ -135,6 +149,7 @@ export async function leaveBudget(
   await prisma.$transaction(async (tx) => {
     if ((await lockMembership(tx, budgetId, userId)) === 'OWNER') throw ownerConflict();
     await tx.budgetMember.delete({ where: { userId_budgetId: { userId, budgetId } } });
+    await logActivity(tx, { budgetId, userId, action: 'MEMBER_LEFT', metadata: { userId } });
   }, LOCKING_TRANSACTION);
 }
 
@@ -162,6 +177,12 @@ export async function transferOwnership(
     await tx.budgetMember.update({
       where: { userId_budgetId: { userId: targetId, budgetId } },
       data: { role: 'OWNER' },
+    });
+    await logActivity(tx, {
+      budgetId,
+      userId: ownerId,
+      action: 'OWNERSHIP_TRANSFERRED',
+      metadata: { from: ownerId, to: targetId },
     });
   }, LOCKING_TRANSACTION);
 

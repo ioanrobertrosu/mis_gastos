@@ -109,7 +109,7 @@ export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
     },
     async (request, reply) => {
       reply.code(201);
-      return createGoal(app.prisma, request.params.id, request.body);
+      return createGoal(app.prisma, request.params.id, request.user.sub, request.body);
     },
   );
 
@@ -123,7 +123,14 @@ export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
       preHandler: app.requirePermission('goal:manage'),
     },
-    (request) => updateGoal(app.prisma, request.params.id, request.params.goalId, request.body),
+    (request) =>
+      updateGoal(
+        app.prisma,
+        request.params.id,
+        request.params.goalId,
+        request.user.sub,
+        request.body,
+      ),
   );
 
   app.get(
@@ -164,7 +171,7 @@ export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
     '/budgets/:id/goals/:goalId',
     { schema: { params: GoalParamsSchema }, preHandler: app.requirePermission('goal:manage') },
     async (request, reply) => {
-      await deleteGoal(app.prisma, request.params.id, request.params.goalId);
+      await deleteGoal(app.prisma, request.params.id, request.params.goalId, request.user.sub);
       return reply.code(204).send();
     },
   );

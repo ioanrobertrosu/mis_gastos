@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { formatMoney, percentOf } from '../../shared/money.js';
 import { monthRange } from '../../shared/month.js';
+import { changesBetween, hasChanges, logActivity } from '../activity/activity.service.js';
 import { categoryNotFound } from './errors.js';
 
 const categorySelect = {
@@ -86,39 +87,94 @@ export async function listCategories(
 export async function createCategory(
   prisma: PrismaClient,
   budgetId: string,
+  userId: string,
   data: CategoryInput & { name: string; monthlyLimit: string },
 ): Promise<CategoryView> {
-  return toView(
-    await prisma.category.create({ data: { ...data, budgetId }, select: categorySelect }),
-  );
+  return prisma.$transaction(async (tx) => {
+    const category = toView(
+      await tx.category.create({ data: { ...data, budgetId }, select: categorySelect }),
+    );
+    await logActivity(tx, {
+      budgetId,
+      userId,
+      action: 'CATEGORY_CREATED',
+      metadata: {
+        categoryId: category.id,
+        name: category.name,
+        monthlyLimit: category.monthlyLimit,
+      },
+    });
+    return category;
+  });
+}
+
+/** Busca la categoría dentro del presupuesto: la de otro presupuesto responde 404 igual que si no existiera. */
+async function findInBudget(tx: Prisma.TransactionClient, budgetId: string, categoryId: string) {
+  const category = await tx.category.findFirst({
+    where: { id: categoryId, budgetId },
+    select: categorySelect,
+  });
+  if (!category) throw categoryNotFound();
+  return toView(category);
 }
 
 /**
- * Filtrar también por `budgetId` impide tocar la categoría de otro presupuesto, aunque se
- * conozca su id: responde 404 igual que si no existiera.
+ * Registra la reactivación (si la hay) y, aparte, los demás cambios: `CATEGORY_LIMIT_UPDATED`
+ * si cambia el límite, `CATEGORY_UPDATED` en otro caso. Sin cambios reales no se registra nada.
  */
 export async function updateCategory(
   prisma: PrismaClient,
   budgetId: string,
   categoryId: string,
+  userId: string,
   data: CategoryInput,
 ): Promise<CategoryView> {
-  const { count } = await prisma.category.updateMany({ where: { id: categoryId, budgetId }, data });
-  if (count === 0) throw categoryNotFound();
-  return toView(
-    await prisma.category.findUniqueOrThrow({ where: { id: categoryId }, select: categorySelect }),
-  );
+  return prisma.$transaction(async (tx) => {
+    const before = await findInBudget(tx, budgetId, categoryId);
+    const after = toView(
+      await tx.category.update({ where: { id: categoryId }, data, select: categorySelect }),
+    );
+
+    const { isActive, ...changes } = changesBetween(before, {
+      name: after.name,
+      monthlyLimit: after.monthlyLimit,
+      icon: after.icon,
+      colorHex: after.colorHex,
+      isActive: after.isActive,
+    });
+    const target = { categoryId, name: after.name };
+    if (isActive) {
+      await logActivity(tx, { budgetId, userId, action: 'CATEGORY_REACTIVATED', metadata: target });
+    }
+    if (hasChanges(changes)) {
+      await logActivity(tx, {
+        budgetId,
+        userId,
+        action: changes.monthlyLimit ? 'CATEGORY_LIMIT_UPDATED' : 'CATEGORY_UPDATED',
+        metadata: { ...target, changes },
+      });
+    }
+    return after;
+  });
 }
 
-/** Soft delete idempotente: sus transacciones se conservan. */
+/** Soft delete idempotente (sus transacciones se conservan): solo se registra la primera vez. */
 export async function deactivateCategory(
   prisma: PrismaClient,
   budgetId: string,
   categoryId: string,
+  userId: string,
 ): Promise<void> {
-  const { count } = await prisma.category.updateMany({
-    where: { id: categoryId, budgetId },
-    data: { isActive: false },
+  await prisma.$transaction(async (tx) => {
+    const category = await findInBudget(tx, budgetId, categoryId);
+    if (!category.isActive) return;
+
+    await tx.category.update({ where: { id: categoryId }, data: { isActive: false } });
+    await logActivity(tx, {
+      budgetId,
+      userId,
+      action: 'CATEGORY_DEACTIVATED',
+      metadata: { categoryId, name: category.name },
+    });
   });
-  if (count === 0) throw categoryNotFound();
 }
