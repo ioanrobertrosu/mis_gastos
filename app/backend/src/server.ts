@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { createRemoteJWKSet } from 'jose';
 import { buildApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { buildLoggerOptions } from './config/logger.js';
@@ -18,6 +19,8 @@ const app = await buildApp({
     jwtSecret: env.SUPABASE_JWT_SECRET,
     issuer: env.JWT_ISSUER,
     audience: env.JWT_AUDIENCE,
+    // Claves públicas de Supabase; `jose` las cachea y vuelve a pedirlas ante una `kid` nueva.
+    jwks: createRemoteJWKSet(new URL(`${env.JWT_ISSUER}/.well-known/jwks.json`)),
   },
   authAdmin: createSupabaseAuthAdmin({
     url: env.SUPABASE_URL,

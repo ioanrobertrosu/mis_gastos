@@ -292,7 +292,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 ## Fase 8 — Observabilidad y endurecimiento del backend
 
 - [ ] Integrar Sentry en el backend (`@sentry/node`) con release y entorno
-- [ ] (Futuro) Migrar la verificación de JWT de HS256 a claves asimétricas vía JWKS
+- [x] Migrar la verificación de JWT de HS256 a claves asimétricas vía JWKS
+  - [x] 🟢 `jwks` en `AuthOptions`; en `server.ts`, `createRemoteJWKSet({JWT_ISSUER}/.well-known/jwks.json)`. La clave se elige por algoritmo (HS256 → secreto; ES256/RS256 → JWKS). Comprobado: el JWKS del proyecto publica la clave ES256 en standby.
+  - [x] 🔴 Test: se aceptan tokens ES256/RS256 de claves publicadas en el JWKS y siguen valiendo los HS256 heredados; se rechazan claves/kid desconocidas, issuer/audience incorrectos y la confusión de algoritmo; un fallo del JWKS da 401
+  - **Nota:** adelantado de la Fase 8: el proyecto Supabase ya tiene la nueva clave en standby y no debe rotarse hasta que el backend la verifique.
 - [ ] Añadir `requestId` / correlación en los logs de Pino
 - [ ] Documentación OpenAPI (`@fastify/swagger` + UI solo en dev)
 - [ ] Umbral mínimo de cobertura en Vitest (p. ej. 80 %) y que falle el CI si no se alcanza

@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-import { type JWTPayload, jwtVerify } from 'jose';
+import { type JWTPayload, type JWTVerifyGetKey, jwtVerify } from 'jose';
 import { type IdentityClaims, syncUser } from '../modules/users/user-sync.js';
 import { UnauthorizedError } from '../shared/errors.js';
 
@@ -25,6 +25,8 @@ export interface AuthOptions {
   jwtSecret: string;
   issuer: string;
   audience: string;
+  /** Claves públicas de firma (JWKS) para los tokens asimétricos (ES256/RS256). */
+  jwks?: JWTVerifyGetKey;
 }
 
 const BEARER = /^Bearer\s+(\S+)$/i;
@@ -46,10 +48,26 @@ function identityClaims(payload: JWTPayload): IdentityClaims {
   };
 }
 
-// Toda la verificación vive aquí: migrar a JWKS (Fase 8) solo cambia este plugin.
+const ASYMMETRIC_ALGORITHMS = ['ES256', 'RS256'];
+
+/**
+ * Elige la clave según el algoritmo del token: HS256 solo con el secreto heredado; ES256/RS256
+ * solo con las claves públicas del JWKS. Un token HS256 nunca se verifica con una clave
+ * pública (confusión de algoritmo), y `jwtVerify` exige además que `alg` esté en la lista.
+ */
+function keyResolver(secret: Uint8Array, jwks: JWTVerifyGetKey | undefined): JWTVerifyGetKey {
+  return async (header, token) => {
+    if (header.alg === 'HS256') return secret;
+    if (jwks && ASYMMETRIC_ALGORITHMS.includes(header.alg)) return jwks(header, token);
+    throw new Error(`Algoritmo de JWT no admitido: ${header.alg}`);
+  };
+}
+
+// Toda la verificación vive aquí: HS256 heredado y claves asimétricas de Supabase (JWKS).
 export const authPlugin = fp<AuthOptions>(
-  async (app, { jwtSecret, issuer, audience }) => {
-    const key = new TextEncoder().encode(jwtSecret);
+  async (app, { jwtSecret, issuer, audience, jwks }) => {
+    const getKey = keyResolver(new TextEncoder().encode(jwtSecret), jwks);
+    const algorithms = ['HS256', ...(jwks ? ASYMMETRIC_ALGORITHMS : [])];
 
     app.decorateRequest('user', null as unknown as AuthUser);
 
@@ -59,8 +77,8 @@ export const authPlugin = fp<AuthOptions>(
 
       let payload: JWTPayload;
       try {
-        ({ payload } = await jwtVerify(token, key, {
-          algorithms: ['HS256'],
+        ({ payload } = await jwtVerify(token, getKey, {
+          algorithms,
           issuer,
           audience,
           requiredClaims: ['sub', 'exp'],

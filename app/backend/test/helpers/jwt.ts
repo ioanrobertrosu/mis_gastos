@@ -1,4 +1,4 @@
-import { SignJWT } from 'jose';
+import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import type { AuthOptions } from '../../src/plugins/auth.js';
 
 export const TEST_AUTH: AuthOptions = {
@@ -56,6 +56,34 @@ export async function signTestToken(options: TestTokenOptions = {}): Promise<str
   if (sub !== null) jwt.setSubject(sub);
 
   return jwt.sign(new TextEncoder().encode(secret));
+}
+
+/** Par de claves asimétricas de test con su JWK público (con `kid` y `alg`), como en un JWKS. */
+export async function testKeyPair(alg: 'ES256' | 'RS256', kid: string) {
+  const { privateKey, publicKey } = await generateKeyPair(alg, { extractable: true });
+  const jwk = { ...(await exportJWK(publicKey)), kid, alg, use: 'sig' };
+  return { privateKey, jwk, alg, kid };
+}
+
+/** Firma un JWT con la forma de los de Supabase usando una clave asimétrica (nuevas JWT keys). */
+export async function signAsymmetricToken(
+  key: Awaited<ReturnType<typeof testKeyPair>>,
+  options: { issuer?: string; audience?: string; kid?: string } = {},
+): Promise<string> {
+  const { issuer = TEST_AUTH.issuer, audience = TEST_AUTH.audience, kid = key.kid } = options;
+  return new SignJWT({
+    email: TEST_USER.email,
+    role: 'authenticated',
+    app_metadata: { provider: 'google', providers: ['google'] },
+    user_metadata: { provider_id: TEST_USER.providerId },
+  })
+    .setProtectedHeader({ alg: key.alg, kid, typ: 'JWT' })
+    .setSubject(TEST_USER.sub)
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(key.privateKey);
 }
 
 /** Token sin firmar (`alg: none`), que nunca debe aceptarse. */
