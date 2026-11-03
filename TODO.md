@@ -247,8 +247,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: no se admiten contribuciones a metas `ARCHIVED`
 - [x] 🟢 Implementar las contribuciones
   - **Nota:** `POST /budgets/:id/goals/:goalId/contributions { amount }` → `{ contribution, goal }`. Nueva acción `goal:contribute` (OWNER/EDITOR/LIMITED_EDITOR). Una transacción con bloqueo de la meta: `increment` + recálculo del estado; `ARCHIVED` → 409; una meta `REACHED` sigue admitiendo aportaciones. Sin el bloqueo, falla el test de archivar mientras se aporta (el estado se sobrescribía).
-- [ ] 🔴 Test: listado de contribuciones por meta con autor (anonimizado si el usuario fue borrado)
-- [ ] 🟢 Implementar el listado
+- [x] 🔴 Test: listado de contribuciones por meta con autor (anonimizado si el usuario fue borrado)
+- [x] 🟢 Implementar el listado
+  - **Nota:** `GET /budgets/:id/goals/:goalId/contributions` → más recientes primero, con `author { id, displayName, avatarUrl }` (o `null` si no hay autor). Sin paginación: las aportaciones por meta son acotadas. La anonimización viene de `DELETE /me`.
 
 ---
 

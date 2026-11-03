@@ -11,6 +11,45 @@ export interface ContributionView {
   createdAt: string;
 }
 
+export interface ContributionListItem {
+  id: string;
+  amount: string;
+  createdAt: string;
+  /** `null` si el usuario se eliminó físicamente; un usuario borrado (soft delete) ya llega
+   * anonimizado ("Usuario Eliminado", sin avatar). */
+  author: { id: string; displayName: string | null; avatarUrl: string | null } | null;
+}
+
+/** Contribuciones de la meta, más recientes primero. */
+export async function listContributions(
+  prisma: PrismaClient,
+  budgetId: string,
+  goalId: string,
+): Promise<ContributionListItem[]> {
+  const goal = await prisma.goal.findFirst({
+    where: { id: goalId, budgetId },
+    select: { id: true },
+  });
+  if (!goal) throw goalNotFound();
+
+  const contributions = await prisma.goalContribution.findMany({
+    where: { goalId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: {
+      id: true,
+      amount: true,
+      createdAt: true,
+      user: { select: { id: true, displayName: true, avatarUrl: true } },
+    },
+  });
+  return contributions.map(({ user, ...contribution }) => ({
+    ...contribution,
+    amount: formatMoney(contribution.amount),
+    createdAt: contribution.createdAt.toISOString(),
+    author: user,
+  }));
+}
+
 /**
  * Registra la aportación y suma su importe a la meta en una sola transacción. El bloqueo de la
  * meta serializa las aportaciones simultáneas y las ediciones (archivar, cambiar el objetivo):

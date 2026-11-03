@@ -229,3 +229,125 @@ describe('POST /api/v1/budgets/:id/goals/:goalId/contributions', () => {
     await expect(storedGoal(goal)).resolves.toMatchObject({ currentAmount: '0.00' });
   });
 });
+
+describe('GET /api/v1/budgets/:id/goals/:goalId/contributions', () => {
+  async function listContributions(user: TestUser, budgetId: string, goalId: string) {
+    return app.inject({
+      method: 'GET',
+      url: `/api/v1/budgets/${budgetId}/goals/${goalId}/contributions`,
+      headers: await authHeader(user),
+    });
+  }
+
+  async function seedContribution(
+    goalId: string,
+    user: TestUser | null,
+    amount: string,
+    createdAt: string,
+  ) {
+    const contribution = await testPrisma.goalContribution.create({
+      data: { goalId, userId: user?.sub ?? null, amount, createdAt: new Date(createdAt) },
+    });
+    return contribution.id;
+  }
+
+  it('cualquier miembro ve las contribuciones de la meta, más recientes primero, con su autor', async () => {
+    const id = await familyBudget();
+    await testPrisma.user.update({
+      where: { id: BEA.sub },
+      data: { displayName: 'Bea', avatarUrl: 'https://cdn.example.com/bea.png' },
+    });
+    const goal = await seedGoal(id);
+    const older = await seedContribution(goal, DANI, '10.00', '2026-10-01T10:00:00.000Z');
+    const newer = await seedContribution(goal, BEA, '25.50', '2026-10-02T10:00:00.000Z');
+    const otherGoal = await seedGoal(id, { title: 'Otra' });
+    await seedContribution(otherGoal, ANA, '99.00', '2026-10-03T10:00:00.000Z');
+
+    const response = await listContributions(CARLOS, id, goal);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual([
+      {
+        id: newer,
+        amount: '25.50',
+        createdAt: '2026-10-02T10:00:00.000Z',
+        author: { id: BEA.sub, displayName: 'Bea', avatarUrl: 'https://cdn.example.com/bea.png' },
+      },
+      {
+        id: older,
+        amount: '10.00',
+        createdAt: '2026-10-01T10:00:00.000Z',
+        author: { id: DANI.sub, displayName: null, avatarUrl: null },
+      },
+    ]);
+  });
+
+  it('el autor que borró su cuenta aparece como "Usuario Eliminado" y el importe se conserva', async () => {
+    const id = await familyBudget();
+    await testPrisma.user.update({
+      where: { id: DANI.sub },
+      data: { displayName: 'Dani', avatarUrl: 'https://cdn.example.com/dani.png' },
+    });
+    const goal = await seedGoal(id);
+    await contribute(DANI, id, goal, { amount: '40.00' });
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/me',
+      headers: await authHeader(DANI),
+    });
+    expect(deleted.statusCode).toBe(204);
+
+    const response = await listContributions(ANA, id, goal);
+
+    expect(response.json()).toEqual([
+      expect.objectContaining({
+        amount: '40.00',
+        author: { id: DANI.sub, displayName: 'Usuario Eliminado', avatarUrl: null },
+      }),
+    ]);
+  });
+
+  it('una contribución sin autor (usuario eliminado físicamente) tiene author null', async () => {
+    const id = await familyBudget();
+    const goal = await seedGoal(id);
+    await seedContribution(goal, null, '5.00', '2026-10-01T10:00:00.000Z');
+
+    const response = await listContributions(ANA, id, goal);
+
+    expect(response.json()).toEqual([expect.objectContaining({ amount: '5.00', author: null })]);
+  });
+
+  it('una meta sin contribuciones devuelve una lista vacía', async () => {
+    const id = await familyBudget();
+    const goal = await seedGoal(id);
+
+    const response = await listContributions(ANA, id, goal);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual([]);
+  });
+
+  it('una meta de otro presupuesto devuelve 404 "Meta no encontrada"', async () => {
+    const id = await familyBudget();
+    const other = await seedBudget([{ user: BEA, role: 'OWNER' }]);
+    const foreign = await seedGoal(other);
+    await seedContribution(foreign, BEA, '1.00', '2026-10-01T10:00:00.000Z');
+
+    const response = await listContributions(ANA, id, foreign);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: { code: 'NOT_FOUND', message: 'Meta no encontrada' },
+    });
+  });
+
+  it('un no miembro recibe 404 "Presupuesto no encontrado"', async () => {
+    const other = await seedBudget([{ user: BEA, role: 'OWNER' }]);
+    const goal = await seedGoal(other);
+
+    const response = await listContributions(ANA, other, goal);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ error: { message: 'Presupuesto no encontrado' } });
+  });
+});
