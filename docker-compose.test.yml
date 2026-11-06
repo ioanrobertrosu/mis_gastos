@@ -1,0 +1,25 @@
+# BD local de los tests de integración. Fichero aparte: `docker compose up` no la arranca.
+# La arranca el globalSetup de Vitest; para pararla: npm run test:db:down (en app/backend).
+# Misma versión mayor y collation que Supabase (17, en_US.UTF-8), por eso no es la imagen alpine.
+name: mis_gastos_test
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: mis_gastos_test_db
+    environment:
+      # Credenciales solo de test: la BD es local, efímera y no contiene datos reales.
+      POSTGRES_USER: mis_gastos
+      POSTGRES_PASSWORD: mis_gastos
+      POSTGRES_DB: mis_gastos_test
+    # Sin durabilidad: se vacía en cada test y prima la velocidad.
+    command: ['postgres', '-c', 'fsync=off', '-c', 'synchronous_commit=off', '-c', 'full_page_writes=off']
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:54329:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mis_gastos -d mis_gastos_test']
+      interval: 1s
+      timeout: 3s
+      retries: 30
