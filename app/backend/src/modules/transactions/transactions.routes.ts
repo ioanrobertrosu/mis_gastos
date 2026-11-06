@@ -1,7 +1,10 @@
+import { Readable } from 'node:stream';
 import { type FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
 import { DateSchema } from '../../shared/date.js';
+import { ValidationError } from '../../shared/errors.js';
 import { PositiveMoneySchema } from '../../shared/money.js';
 import { IdParamsSchema } from '../../shared/schemas.js';
+import { exportTransactionsCsv } from './export.service.js';
 import {
   createTransaction,
   deleteTransaction,
@@ -63,6 +66,11 @@ const ListTransactionsQuerySchema = Type.Object(
   { additionalProperties: false },
 );
 
+const ExportQuerySchema = Type.Object(
+  { from: DateSchema, to: DateSchema },
+  { additionalProperties: false },
+);
+
 const TransactionParamsSchema = Type.Object({
   id: Type.String({ format: 'uuid' }),
   transactionId: Type.String({ format: 'uuid' }),
@@ -85,6 +93,24 @@ export const transactionRoutes: FastifyPluginAsyncTypebox = async (app) => {
     async (request, reply) => {
       reply.code(201);
       return createTransaction(app.prisma, request.params.id, request.user.sub, request.body);
+    },
+  );
+
+  app.get(
+    '/budgets/:id/export',
+    {
+      schema: { params: IdParamsSchema, querystring: ExportQuerySchema },
+      preHandler: app.requirePermission('budget:export'),
+    },
+    (request, reply) => {
+      const { from, to } = request.query;
+      if (from > to) {
+        throw new ValidationError('La fecha inicial no puede ser posterior a la final');
+      }
+      return reply
+        .type('text/csv; charset=utf-8')
+        .header('content-disposition', `attachment; filename="gastos_${from}_${to}.csv"`)
+        .send(Readable.from(exportTransactionsCsv(app.prisma, request.params.id, { from, to })));
     },
   );
 

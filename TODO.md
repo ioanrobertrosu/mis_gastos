@@ -274,10 +274,11 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** las alertas son entradas del muro (`CATEGORY_90_PERCENT`, `CATEGORY_LIMIT_EXCEEDED`; la meta alcanzada y el nuevo miembro ya eran `GOAL_REACHED` y `MEMBER_JOINED`). 90 % = gasto ≥ 90 % en decimal exacto; exceso = estrictamente > 100 %; un salto directo por encima del límite solo genera la de exceso. `dedupeKey` único (acción + categoría + mes). Se evalúan al crear o editar una transacción (categoría y mes de destino) y al bajar un límite (solo el mes actual UTC). Bloqueo `FOR NO KEY UPDATE` de la categoría: sin él se pierde la alerta; con `FOR UPDATE` hay interbloqueo (ambos comprobados).
 
 ### 6.3 Exportación CSV
-- [ ] 🔴 Test: `GET /api/v1/budgets/:id/export?from&to` devuelve `text/csv` con cabeceras y filas correctas
-- [ ] 🔴 Test: el CSV escapa comas, comillas y saltos de línea; protege contra inyección de fórmulas (`=`, `+`, `-`, `@`)
-- [ ] 🔴 Test: solo los miembros del presupuesto pueden exportar; rango de fechas obligatorio y validado
-- [ ] 🟢 Implementar la exportación en streaming
+- [x] 🔴 Test: `GET /api/v1/budgets/:id/export?from&to` devuelve `text/csv` con cabeceras y filas correctas
+- [x] 🔴 Test: el CSV escapa comas, comillas y saltos de línea; protege contra inyección de fórmulas (`=`, `+`, `-`, `@`)
+- [x] 🔴 Test: solo los miembros del presupuesto pueden exportar; rango de fechas obligatorio y validado
+- [x] 🟢 Implementar la exportación en streaming
+  - **Nota:** generador asíncrono con lotes de 500 (keyset `date ASC, id ASC`) sobre `Readable.from`. CSV RFC 4180 con coma y CRLF, BOM UTF-8 para Excel. Columnas `fecha,categoria,importe,descripcion,recurrente,autor`; autor = `displayName` o email. El texto libre que empieza por `=`, `+`, `-`, `@`, tabulador o CR lleva un `'` delante.
 
 ---
 
