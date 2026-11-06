@@ -268,9 +268,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** `GET /budgets/:id/activity` → `{ items, nextCursor }`, más reciente primero; cursor keyset opaco sobre `seq`; `limit` 1–100 (20). Cada entrada con `actor` (perfil público, anonimizado si borró la cuenta, o `null`). Sin filtro por acción por ahora.
 
 ### 6.2 Alertas inteligentes
-- [ ] 🔴 Test: se genera la alerta `CATEGORY_90_PERCENT` al superar el 90 % del límite (una sola vez por mes y categoría)
-- [ ] 🔴 Test: alerta al exceder el 100 %, al alcanzar una meta y al unirse un miembro
-- [ ] 🟢 Implementar la detección de hitos
+- [x] 🔴 Test: se genera la alerta `CATEGORY_90_PERCENT` al superar el 90 % del límite (una sola vez por mes y categoría)
+- [x] 🔴 Test: alerta al exceder el 100 %, al alcanzar una meta y al unirse un miembro
+- [x] 🟢 Implementar la detección de hitos
+  - **Nota:** las alertas son entradas del muro (`CATEGORY_90_PERCENT`, `CATEGORY_LIMIT_EXCEEDED`; la meta alcanzada y el nuevo miembro ya eran `GOAL_REACHED` y `MEMBER_JOINED`). 90 % = gasto ≥ 90 % en decimal exacto; exceso = estrictamente > 100 %; un salto directo por encima del límite solo genera la de exceso. `dedupeKey` único (acción + categoría + mes). Se evalúan al crear o editar una transacción (categoría y mes de destino) y al bajar un límite (solo el mes actual UTC). Bloqueo `FOR NO KEY UPDATE` de la categoría: sin él se pierde la alerta; con `FOR UPDATE` hay interbloqueo (ambos comprobados).
 
 ### 6.3 Exportación CSV
 - [ ] 🔴 Test: `GET /api/v1/budgets/:id/export?from&to` devuelve `text/csv` con cabeceras y filas correctas

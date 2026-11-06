@@ -7,7 +7,9 @@ import {
 } from '../../shared/errors.js';
 import { formatDate, parseDate } from '../../shared/date.js';
 import { formatMoney } from '../../shared/money.js';
+import { LOCKING_TRANSACTION } from '../../shared/transactions.js';
 import { changesBetween, hasChanges, logActivity } from '../activity/activity.service.js';
+import { evaluateCategoryAlerts } from '../activity/alerts.service.js';
 import { can } from '../budgets/permissions.js';
 import { categoryNotFound } from '../categories/errors.js';
 import { decodeCursor, encodeCursor } from './cursor.js';
@@ -199,8 +201,14 @@ export async function createTransaction(
         amount: transaction.amount,
       },
     });
+    await evaluateCategoryAlerts(tx, {
+      budgetId,
+      categoryId: transaction.categoryId,
+      userId: createdById,
+      month: transaction.date.slice(0, 7),
+    });
     return transaction;
-  });
+  }, LOCKING_TRANSACTION);
 }
 
 export async function getTransaction(
@@ -252,8 +260,17 @@ export async function updateTransaction(
         metadata: { transactionId, changes },
       });
     }
+    // Solo el destino puede ganar gasto: la categoría y el mes de origen, como mucho, lo pierden.
+    if (changes.amount || changes.categoryId || changes.date) {
+      await evaluateCategoryAlerts(tx, {
+        budgetId,
+        categoryId: after.categoryId,
+        userId: actor.userId,
+        month: after.date.slice(0, 7),
+      });
+    }
     return after;
-  });
+  }, LOCKING_TRANSACTION);
 }
 
 /** El permiso (`transaction:edit-own`) lo comprueba la ruta; la autoría, este servicio. */

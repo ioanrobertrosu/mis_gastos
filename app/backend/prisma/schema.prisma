@@ -211,6 +211,8 @@ enum ActivityAction {
   GOAL_DELETED
   GOAL_CONTRIBUTION
   GOAL_REACHED
+  CATEGORY_90_PERCENT
+  CATEGORY_LIMIT_EXCEEDED
 }
 
 /// Muro de actividad del presupuesto. Se escribe en la misma transacción que la mutación.
@@ -225,6 +227,8 @@ model ActivityLog {
   // Orden estable: varias entradas de una misma transacción comparten `createdAt` (hora de
   // inicio de la transacción), así que el muro se ordena y pagina por esta secuencia.
   seq       Int            @unique @default(autoincrement())
+  // Solo en alertas: impide repetir la misma alerta (acción + categoría + mes).
+  dedupeKey String?        @unique
 
   budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)

@@ -1,7 +1,9 @@
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { formatMoney, percentOf } from '../../shared/money.js';
 import { monthRange } from '../../shared/month.js';
+import { LOCKING_TRANSACTION } from '../../shared/transactions.js';
 import { changesBetween, hasChanges, logActivity } from '../activity/activity.service.js';
+import { evaluateCategoryAlerts } from '../activity/alerts.service.js';
 import { categoryNotFound } from './errors.js';
 
 const categorySelect = {
@@ -154,8 +156,12 @@ export async function updateCategory(
         metadata: { ...target, changes },
       });
     }
+    // Bajar el límite puede cruzar un umbral en el mes en curso; los pasados no se reevalúan.
+    if (new Prisma.Decimal(after.monthlyLimit).lt(before.monthlyLimit)) {
+      await evaluateCategoryAlerts(tx, { budgetId, categoryId, userId });
+    }
     return after;
-  });
+  }, LOCKING_TRANSACTION);
 }
 
 /** Soft delete idempotente (sus transacciones se conservan): solo se registra la primera vez. */
