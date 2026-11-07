@@ -59,14 +59,25 @@ export const realtimeRoutes: FastifyPluginAsync = async (app) => {
       return reply({ type: 'unsubscribed', budgetId });
     }
 
-    const membership = await app.prisma.budgetMember.findUnique({
-      where: { userId_budgetId: { userId, budgetId } },
-      select: { id: true },
-    });
-    // Mismo error si no existe o si no es miembro: no se revela cuál.
-    if (!membership) return reply({ type: 'error', code: 'NOT_FOUND', budgetId });
+    const isMember = async () =>
+      (await app.prisma.budgetMember.findUnique({
+        where: { userId_budgetId: { userId, budgetId } },
+        select: { id: true },
+      })) !== null;
 
+    // Mismo error si no existe o si no es miembro: no se revela cuál.
+    if (!(await isMember())) return reply({ type: 'error', code: 'NOT_FOUND', budgetId });
+    // Cerrada durante la consulta: su evento `close` ya pasó y nadie la sacaría de la sala.
+    if (socket.readyState !== socket.OPEN) return;
+
+    // Se comprueba otra vez ya en la sala: una expulsión confirmada entre la consulta y la entrada
+    // habría limpiado la sala antes de tiempo. La primera comprobación evita que un no miembro
+    // llegue a estar en la sala, aunque sea un instante.
     app.realtime.join(budgetId, socket);
+    if (!(await isMember())) {
+      app.realtime.leave(budgetId, socket);
+      return reply({ type: 'error', code: 'NOT_FOUND', budgetId });
+    }
     reply({ type: 'subscribed', budgetId });
   }
 
@@ -74,6 +85,8 @@ export const realtimeRoutes: FastifyPluginAsync = async (app) => {
     '/ws',
     { websocket: true, onRequest: [tokenFromProtocol, app.authenticate] },
     (socket, request) => {
+      app.realtime.connect(request.user.sub, socket);
+
       const expiry = setTimeout(
         () => socket.close(CLOSE_TOKEN_EXPIRED, 'Token caducado'),
         Math.min(request.tokenExpiresAt - Date.now(), MAX_TIMER_MS),
@@ -97,7 +110,7 @@ export const realtimeRoutes: FastifyPluginAsync = async (app) => {
       socket.on('error', (error) => request.log.debug({ err: error }, 'Error de WebSocket'));
       socket.on('close', () => {
         clearTimeout(expiry);
-        app.realtime.disconnect(socket);
+        app.realtime.disconnect(request.user.sub, socket);
       });
     },
   );

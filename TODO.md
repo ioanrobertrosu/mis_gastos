@@ -292,8 +292,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: tras una mutación, los demás clientes del presupuesto reciben un evento ligero `{ type, budgetId, entity, id }` (sin payload completo)
 - [x] 🟢 Implementar el emisor de eventos de dominio → broadcast
   - **Nota:** `RealtimeHub.publish`, llamado desde cada ruta tras resolverse el servicio (ya confirmado; si la mutación falla, no hay evento). Eventos `{ type: created|updated|deleted, budgetId, entity: budget|member|category|transaction|goal, id }`, sin datos. Una aportación es `updated` de la meta. Llegan a todas las conexiones suscritas, también a las del autor.
-- [ ] 🔴 Test: un miembro expulsado deja de recibir eventos inmediatamente
-- [ ] 🟢 Implementar la desuscripción al perder la membresía
+- [x] 🔴 Test: un miembro expulsado deja de recibir eventos inmediatamente
+- [x] 🟢 Implementar la desuscripción al perder la membresía
+  - **Nota:** expulsión/abandono/presupuesto borrado → `{ type: "unsubscribed", budgetId, reason: REMOVED|LEFT|BUDGET_DELETED }` (la conexión sigue abierta para sus otros presupuestos). Cuenta borrada → cierre 4403 de todas sus conexiones. El expulsado sale de la sala antes de publicar su baja. `subscribe` comprueba la membresía, entra en la sala y vuelve a comprobarla, para cubrir una expulsión simultánea.
 - [ ] Heartbeat ping/pong y limpieza de conexiones muertas
 
 ---

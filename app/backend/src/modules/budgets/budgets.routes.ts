@@ -108,6 +108,7 @@ export const budgetRoutes: FastifyPluginAsyncTypebox = async (app) => {
       const budgetId = request.params.id;
       await deleteBudget(app.prisma, budgetId);
       app.realtime.publish({ type: 'deleted', budgetId, entity: 'budget', id: budgetId });
+      app.realtime.closeRoom(budgetId, 'BUDGET_DELETED');
       return reply.code(204).send();
     },
   );

@@ -87,6 +87,7 @@ export const memberRoutes: FastifyPluginAsyncTypebox = async (app) => {
     async (request, reply) => {
       const { id: budgetId, userId } = request.params;
       await removeMember(app.prisma, budgetId, request.user.sub, userId);
+      app.realtime.removeMember(budgetId, userId, 'REMOVED');
       app.realtime.publish({ type: 'deleted', budgetId, entity: 'member', id: userId });
       return reply.code(204).send();
     },
@@ -98,6 +99,7 @@ export const memberRoutes: FastifyPluginAsyncTypebox = async (app) => {
     async (request, reply) => {
       const budgetId = request.params.id;
       await leaveBudget(app.prisma, budgetId, request.user.sub);
+      app.realtime.removeMember(budgetId, request.user.sub, 'LEFT');
       app.realtime.publish({ type: 'deleted', budgetId, entity: 'member', id: request.user.sub });
       return reply.code(204).send();
     },

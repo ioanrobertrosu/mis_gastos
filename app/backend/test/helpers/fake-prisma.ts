@@ -18,6 +18,7 @@ export function fakePrisma(
     $disconnect: vi.fn(),
     user: model(),
     identity: model(),
+    budgetMember: model(),
   };
   fake.$transaction = vi.fn(async (arg: unknown) =>
     Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(fake),

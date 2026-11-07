@@ -1,6 +1,7 @@
 import { type FastifyPluginAsyncTypebox, type Static, Type } from '@fastify/type-provider-typebox';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { Currency, Role } from '../../generated/prisma/enums.js';
+import { CLOSE_ACCOUNT_DELETED } from '../realtime/hub.js';
 import { deleteAccount } from './account.service.js';
 
 const Nullable = <T extends ReturnType<typeof Type.String>>(schema: T) =>
@@ -104,6 +105,8 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (app) => {
   app.delete('/me', async (request, reply) => {
     const userId = request.user.sub;
     const leftBudgets = await deleteAccount(app.prisma, userId);
+    // Primero el cierre: `publish` ya no envía a una conexión que se está cerrando.
+    app.realtime.closeUser(userId, CLOSE_ACCOUNT_DELETED, 'Cuenta eliminada');
     for (const budgetId of leftBudgets) {
       app.realtime.publish({ type: 'deleted', budgetId, entity: 'member', id: userId });
     }
