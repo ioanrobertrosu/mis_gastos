@@ -25,7 +25,8 @@ export async function* exportTransactionsCsv(
     const rows = await prisma.transaction.findMany({
       where: {
         budgetId,
-        date: { gte: parseDate(from), lte: parseDate(to) },
+        // `gte` desde el cursor: el `OR` no acota el índice y cada lote costaría más que el anterior.
+        date: { gte: after?.date ?? parseDate(from), lte: parseDate(to) },
         ...(after
           ? { OR: [{ date: { gt: after.date } }, { date: after.date, id: { gt: after.id } }] }
           : {}),

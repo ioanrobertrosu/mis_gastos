@@ -140,18 +140,21 @@ export async function listTransactions(
     throw new ValidationError('La fecha inicial no puede ser posterior a la final');
   }
   const after = cursor === undefined ? undefined : decodeCursor(cursor);
+  // El `OR` del cursor no acota el índice: sin este tope, Postgres recorrería todas las filas
+  // anteriores al cursor y cada página costaría más cuanto más profunda.
+  const until = after !== undefined && (to === undefined || after.date < to) ? after.date : to;
 
   const rows = await prisma.transaction.findMany({
     where: {
       budgetId,
       ...(categoryId === undefined ? {} : { categoryId }),
       ...(isRecurring === undefined ? {} : { isRecurring }),
-      ...(from === undefined && to === undefined
+      ...(from === undefined && until === undefined
         ? {}
         : {
             date: {
               ...(from === undefined ? {} : { gte: parseDate(from) }),
-              ...(to === undefined ? {} : { lte: parseDate(to) }),
+              ...(until === undefined ? {} : { lte: parseDate(until) }),
             },
           }),
       ...(after === undefined

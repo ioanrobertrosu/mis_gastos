@@ -316,11 +316,14 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - [x] 🔴 Test: límite global (300/min por IP, `/health` exento), exportación (10/min), IP real tras proxy (`TRUST_PROXY`), body de 64 KB, WebSocket (5 conexiones por usuario, 20 mensajes/10 s, cierre 4429)
   - [x] 🟢 Límites implementados. `authenticate` pasa a `preParsing`: tras el límite de peticiones (los tokens inválidos también cuentan) y antes de leer el body.
   - **Nota:** sin cambios en secretos (ninguno en git; `.env` fuera de git y de la imagen), imagen sin root, Helmet, CORS cerrado y errores 500 sin detalles. `npm audit`: 0 en producción; 10 moderadas en desarrollo. Los contadores viven en memoria (una sola instancia). `TRUST_PROXY` hay que ajustarlo al desplegar.
-- [ ] Revisar consultas N+1 y planes `EXPLAIN` de los listados paginados
+- [x] Revisar consultas N+1 y planes `EXPLAIN` de los listados paginados
+  - **Nota:** sin N+1 (los únicos bucles con consultas, al borrar la cuenta, están acotados a 3 presupuestos). Todas las consultas usan índice con 300.000 transacciones. Corregido: el `OR` del cursor no acotaba el índice y las páginas profundas se encarecían con la profundidad; ahora llevan también un tope de fecha.
 - [ ] Pipeline de CI (GitHub Actions): lint → typecheck → test → build de la imagen Docker
 - [x] Definir el destino de despliegue del contenedor en producción
   - **Decisión:** VM de Oracle (host SSH `ORACLE_VM`, usuario `ubuntu`, ARM64), en `/home/ubuntu/prod`. La imagen se construye en el servidor. API solo en `127.0.0.1:3000` hasta que haya un proxy inverso con TLS.
-- [ ] Exponer la API con un proxy inverso y TLS (requiere dominio) y ajustar `TRUST_PROXY`
+  - **Decisión:** el proyecto Supabase principal es la BD de producción. Las migraciones se crean contra la BD local de Docker y se aplican con `prisma migrate deploy`, nunca `migrate dev`. Las pruebas e investigaciones, solo en local.
+- [ ] Exponer la API con un proxy inverso y TLS y ajustar `TRUST_PROXY`
+  - **Aplazado:** sin dominio por ahora; la API sigue privada en el servidor (acceso por túnel SSH).
 
 ---
 
