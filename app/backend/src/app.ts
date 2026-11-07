@@ -15,6 +15,8 @@ import { prismaPlugin } from './plugins/prisma.js';
 import { securityPlugin } from './plugins/security.js';
 
 export const API_PREFIX = '/api/v1';
+/** Los bodies de la API ocupan menos de 1 KB: holgado, muy por debajo del 1 MB por defecto. */
+const BODY_LIMIT_BYTES = 64 * 1024;
 
 export interface BuildAppOptions extends FastifyServerOptions {
   prisma: PrismaClient;
@@ -28,6 +30,10 @@ export interface BuildAppOptions extends FastifyServerOptions {
   authAdmin?: AuthAdmin;
   /** Cada cuánto se comprueba que las conexiones WebSocket siguen vivas. Por defecto 30 s. */
   heartbeatIntervalMs?: number;
+  /** Peticiones por minuto e IP en toda la API. Por defecto 300. */
+  rateLimitMax?: number;
+  /** Número de proxies de confianza delante del backend. Por defecto 0. */
+  trustedProxies?: number;
 }
 
 export async function buildApp({
@@ -37,9 +43,19 @@ export async function buildApp({
   corsOrigins = [],
   authAdmin = NOOP_AUTH_ADMIN,
   heartbeatIntervalMs = 30_000,
+  rateLimitMax = 300,
+  trustedProxies = 0,
   ...options
 }: BuildAppOptions): Promise<FastifyInstance> {
-  const app = Fastify({ ...options, schemaController, genReqId });
+  const app = Fastify({
+    ...options,
+    schemaController,
+    genReqId,
+    bodyLimit: BODY_LIMIT_BYTES,
+    // Sin proxies de confianza se ignora X-Forwarded-For: lo podría falsificar el cliente. Con
+    // ellos, la IP real es la que hay justo antes del último proxy de confianza.
+    trustProxy: trustedProxies > 0 ? (_address, hop) => hop < trustedProxies : false,
+  });
   // En la raíz: cubre también los errores y las rutas inexistentes.
   app.addHook('onRequest', async (request, reply) => {
     reply.header(REQUEST_ID_HEADER, request.id);
@@ -47,7 +63,7 @@ export async function buildApp({
   app.decorate('authAdmin', authAdmin);
 
   await app.register(errorHandlerPlugin, { exposeInternalErrors });
-  await app.register(securityPlugin, { corsOrigins });
+  await app.register(securityPlugin, { corsOrigins, rateLimitMax });
   await app.register(prismaPlugin, { client: prisma });
   // Antes de cualquier ruta: un `preHandler: app.authenticate` indefinido dejaría la ruta pública.
   await app.register(authPlugin, auth);

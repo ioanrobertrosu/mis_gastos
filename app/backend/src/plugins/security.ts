@@ -7,10 +7,12 @@ import { RateLimitedError } from '../shared/errors.js';
 export interface SecurityOptions {
   /** Orígenes permitidos por CORS; vacío = ninguno (las apps nativas no usan CORS). */
   corsOrigins: string[];
+  /** Peticiones por minuto e IP en toda la API. */
+  rateLimitMax: number;
 }
 
 export const securityPlugin = fp<SecurityOptions>(
-  async (app, { corsOrigins }) => {
+  async (app, { corsOrigins, rateLimitMax }) => {
     await app.register(helmet);
 
     await app.register(cors, {
@@ -18,9 +20,12 @@ export const securityPlugin = fp<SecurityOptions>(
       methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
     });
 
-    // Desactivado globalmente: cada ruta pública o de invitación lo activa con `config.rateLimit`.
+    // Límite global por IP, en `onRequest`: antes de `authenticate` (`preParsing`), así que los
+    // tokens inválidos también cuentan. Las rutas sensibles lo endurecen con `config.rateLimit`.
     await app.register(rateLimit, {
-      global: false,
+      global: true,
+      max: rateLimitMax,
+      timeWindow: '1 minute',
       errorResponseBuilder: (_request, context) =>
         new RateLimitedError(`Demasiadas peticiones, inténtalo de nuevo en ${context.after}`),
     });

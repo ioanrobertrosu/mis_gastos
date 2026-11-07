@@ -8,6 +8,11 @@ const UUID = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a
 export const MAX_CLIENT_MESSAGE_BYTES = 4096;
 /** Cierre por token caducado; el cliente debe reconectar con un token nuevo. */
 const CLOSE_TOKEN_EXPIRED = 4401;
+/** Cierre por superar un límite de conexiones o de mensajes. */
+const CLOSE_RATE_LIMITED = 4429;
+const MAX_CONNECTIONS_PER_USER = 5;
+const MAX_MESSAGES_PER_WINDOW = 20;
+const MESSAGE_WINDOW_MS = 10_000;
 /** Máximo de `setTimeout`: más allá, dispararía de inmediato. */
 const MAX_TIMER_MS = 2 ** 31 - 1;
 export const BEARER_PROTOCOL = 'bearer';
@@ -83,8 +88,14 @@ export const realtimeRoutes: FastifyPluginAsync = async (app) => {
 
   app.get(
     '/ws',
-    { websocket: true, onRequest: [tokenFromProtocol, app.authenticate] },
+    { websocket: true, preParsing: [tokenFromProtocol, app.authenticate] },
     (socket, request) => {
+      // Aquí y no en el handshake: comprobar y registrar es atómico, y un navegador no puede leer
+      // el estado HTTP de un handshake rechazado, pero sí este código de cierre.
+      if (app.realtime.connectionsOf(request.user.sub) >= MAX_CONNECTIONS_PER_USER) {
+        socket.close(CLOSE_RATE_LIMITED, 'Demasiadas conexiones');
+        return;
+      }
       app.realtime.connect(request.user.sub, socket);
 
       const expiry = setTimeout(
@@ -95,7 +106,21 @@ export const realtimeRoutes: FastifyPluginAsync = async (app) => {
 
       // En cola: las respuestas salen en el orden de los mensajes aunque consulten la BD.
       let queue = Promise.resolve();
+      let windowStart = Date.now();
+      let messagesInWindow = 0;
       socket.on('message', (data: unknown) => {
+        // Cada `subscribe` consulta la BD: un bucle en el cliente no debe poder saturarla.
+        const now = Date.now();
+        if (now - windowStart >= MESSAGE_WINDOW_MS) {
+          windowStart = now;
+          messagesInWindow = 0;
+        }
+        messagesInWindow += 1;
+        if (messagesInWindow > MAX_MESSAGES_PER_WINDOW) {
+          socket.close(CLOSE_RATE_LIMITED, 'Demasiados mensajes');
+          return;
+        }
+
         queue = queue
           .then(() => handleMessage(socket, request.user.sub, data))
           .catch((error: unknown) => {

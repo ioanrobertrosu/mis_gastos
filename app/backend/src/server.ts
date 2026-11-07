@@ -28,6 +28,7 @@ const app = await buildApp({
   }),
   exposeInternalErrors: env.NODE_ENV !== 'production',
   corsOrigins: env.CORS_ORIGINS,
+  trustedProxies: env.TRUST_PROXY,
   logger: buildLoggerOptions(env.NODE_ENV),
 });
 

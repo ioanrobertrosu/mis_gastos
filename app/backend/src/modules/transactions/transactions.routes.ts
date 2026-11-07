@@ -77,8 +77,8 @@ const TransactionParamsSchema = Type.Object({
 });
 
 export const transactionRoutes: FastifyPluginAsyncTypebox = async (app) => {
-  // onRequest: autenticar antes de validar el body (sin token, 401 y no detalles del esquema).
-  app.addHook('onRequest', app.authenticate);
+  // preParsing: tras el límite de peticiones y antes de leer el body (sin token, solo un 401).
+  app.addHook('preParsing', app.authenticate);
 
   app.post(
     '/budgets/:id/transactions',
@@ -114,6 +114,8 @@ export const transactionRoutes: FastifyPluginAsyncTypebox = async (app) => {
     {
       schema: { params: IdParamsSchema, querystring: ExportQuerySchema },
       preHandler: app.requirePermission('budget:export'),
+      // Recorre todo el histórico del rango: mucho más cara que una petición normal.
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
     },
     (request, reply) => {
       const { from, to } = request.query;

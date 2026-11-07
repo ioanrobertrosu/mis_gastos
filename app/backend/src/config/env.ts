@@ -23,9 +23,16 @@ const EnvSchema = Type.Object({
   // API de administración de Auth (borrado de cuentas). La clave omite todas las políticas RLS.
   SUPABASE_URL: Type.String({ format: 'http-url' }),
   SUPABASE_SERVICE_ROLE_KEY: Type.String({ minLength: 1 }),
+  // Número de proxies delante del backend. Mal ajustado: pocos, todos los clientes comparten
+  // el límite de peticiones; demasiados, un cliente puede falsificar su IP.
+  // Como texto: la conversión de TypeBox aceptaría `true` como 1 y confiaría en un proxy sin querer.
+  TRUST_PROXY: Type.String({ pattern: '^[0-9]+$', default: '0' }),
 });
 
-export type Env = Omit<Static<typeof EnvSchema>, 'CORS_ORIGINS'> & { CORS_ORIGINS: string[] };
+export type Env = Omit<Static<typeof EnvSchema>, 'CORS_ORIGINS' | 'TRUST_PROXY'> & {
+  CORS_ORIGINS: string[];
+  TRUST_PROXY: number;
+};
 
 function parseList(value: string): string[] {
   return value
@@ -45,7 +52,11 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
   );
 
   if (Value.Check(EnvSchema, env)) {
-    return { ...env, CORS_ORIGINS: parseList(env.CORS_ORIGINS) };
+    return {
+      ...env,
+      CORS_ORIGINS: parseList(env.CORS_ORIGINS),
+      TRUST_PROXY: Number(env.TRUST_PROXY),
+    };
   }
 
   // Una sola línea por variable aunque el esquema genere varios errores (p. ej. uniones).

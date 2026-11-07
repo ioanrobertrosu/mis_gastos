@@ -211,6 +211,18 @@ describe('GET /api/v1/budgets/:id/export', () => {
   });
 
   describe('acceso y validación', () => {
+    it('más de 10 exportaciones por minuto devuelven 429', async () => {
+      const { budgetId } = await budget();
+
+      for (let i = 0; i < 10; i++) {
+        expect((await exportCsv(ANA, budgetId)).statusCode).toBe(200);
+      }
+      const blocked = await exportCsv(ANA, budgetId);
+
+      expect(blocked.statusCode).toBe(429);
+      expect(blocked.json()).toMatchObject({ error: { code: 'RATE_LIMITED' } });
+    });
+
     it('un VIEWER puede exportar', async () => {
       const { budgetId } = await budget();
 

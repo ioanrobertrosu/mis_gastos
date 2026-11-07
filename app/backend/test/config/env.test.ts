@@ -43,7 +43,14 @@ describe('loadEnv', () => {
       JWT_AUDIENCE: 'authenticated',
       SUPABASE_URL,
       SUPABASE_SERVICE_ROLE_KEY,
+      TRUST_PROXY: 0,
     });
+  });
+
+  it('TRUST_PROXY es el número de proxies delante del backend', () => {
+    expect(loadEnv({ ...REQUIRED, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(2);
+    expect(() => loadEnv({ ...REQUIRED, TRUST_PROXY: 'true' })).toThrow(/TRUST_PROXY/);
+    expect(() => loadEnv({ ...REQUIRED, TRUST_PROXY: '-1' })).toThrow(/TRUST_PROXY/);
   });
 
   it('convierte CORS_ORIGINS (separado por comas) en una lista sin espacios ni vacíos', () => {

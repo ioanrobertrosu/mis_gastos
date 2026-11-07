@@ -14,7 +14,7 @@ declare module 'fastify' {
     /**
      * `preHandler` para rutas con parámetro `:id` de presupuesto: 404 si el usuario no es
      * miembro, 403 si su rol no permite `action`. Rellena `request.membership`.
-     * Requiere `authenticate` antes (onRequest).
+     * Requiere `authenticate` antes (preParsing).
      */
     requirePermission: (action: Action) => (request: FastifyRequest) => Promise<void>;
   }

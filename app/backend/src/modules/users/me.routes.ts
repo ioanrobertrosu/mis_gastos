@@ -78,8 +78,8 @@ function toProfile(user: Prisma.UserGetPayload<{ select: typeof profileSelect }>
 }
 
 export const meRoutes: FastifyPluginAsyncTypebox = async (app) => {
-  // onRequest: autenticar antes de validar el body (sin token, 401 y no detalles del esquema).
-  app.addHook('onRequest', app.authenticate);
+  // preParsing: tras el límite de peticiones y antes de leer el body (sin token, solo un 401).
+  app.addHook('preParsing', app.authenticate);
 
   app.get('/me', { schema: { response: { 200: ProfileSchema } } }, async (request) => {
     const user = await app.prisma.user.findUniqueOrThrow({

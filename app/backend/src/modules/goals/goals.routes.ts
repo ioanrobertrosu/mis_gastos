@@ -76,8 +76,8 @@ export const GoalParamsSchema = Type.Object({
 });
 
 export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
-  // onRequest: autenticar antes de validar el body (sin token, 401 y no detalles del esquema).
-  app.addHook('onRequest', app.authenticate);
+  // preParsing: tras el límite de peticiones y antes de leer el body (sin token, solo un 401).
+  app.addHook('preParsing', app.authenticate);
 
   app.get(
     '/budgets/:id/goals',

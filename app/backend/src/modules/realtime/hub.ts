@@ -55,6 +55,11 @@ export class RealtimeHub {
     return count;
   }
 
+  /** Conexiones abiertas de un usuario. */
+  connectionsOf(userId: string): number {
+    return this.connections.get(userId)?.size ?? 0;
+  }
+
   /** Registra la conexión de un usuario, esté o no suscrita a algo. */
   connect(userId: string, socket: WebSocket): void {
     const sockets = this.connections.get(userId) ?? new Set<WebSocket>();
