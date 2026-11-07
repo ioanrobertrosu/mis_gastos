@@ -1,5 +1,6 @@
 import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { genReqId, REQUEST_ID_HEADER } from './config/request-id.js';
 import { schemaController } from './config/validation.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { apiRoutes } from './modules/index.js';
@@ -38,7 +39,11 @@ export async function buildApp({
   heartbeatIntervalMs = 30_000,
   ...options
 }: BuildAppOptions): Promise<FastifyInstance> {
-  const app = Fastify({ ...options, schemaController });
+  const app = Fastify({ ...options, schemaController, genReqId });
+  // En la raíz: cubre también los errores y las rutas inexistentes.
+  app.addHook('onRequest', async (request, reply) => {
+    reply.header(REQUEST_ID_HEADER, request.id);
+  });
   app.decorate('authAdmin', authAdmin);
 
   await app.register(errorHandlerPlugin, { exposeInternalErrors });
