@@ -86,9 +86,10 @@ export class TestClients {
     headers: Record<string, string> = {},
     path = '/ws',
     protocols: string[] = [],
+    { autoPong = true }: { autoPong?: boolean } = {},
   ): Promise<TestClient> {
     return new Promise((resolve, reject) => {
-      const socket = new WebSocket(this.url(path), protocols, { headers });
+      const socket = new WebSocket(this.url(path), protocols, { headers, autoPong });
       this.open.add(socket);
       const client = new TestClient(socket);
       socket.once('open', () => resolve(client));

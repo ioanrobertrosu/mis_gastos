@@ -36,6 +36,8 @@ function trySend(socket: WebSocket, message: string): void {
 export class RealtimeHub {
   private readonly rooms = new Map<string, Set<WebSocket>>();
   private readonly connections = new Map<string, Set<WebSocket>>();
+  /** Conexiones que han respondido desde el último ping. */
+  private readonly alive = new WeakSet<WebSocket>();
 
   /**
    * Notifica a los suscritos. Las rutas lo llaman tras confirmarse la mutación, así que un fallo
@@ -46,11 +48,38 @@ export class RealtimeHub {
     for (const socket of this.rooms.get(event.budgetId) ?? []) trySend(socket, message);
   }
 
+  /** Conexiones abiertas en esta instancia. */
+  get connectionCount(): number {
+    let count = 0;
+    for (const sockets of this.connections.values()) count += sockets.size;
+    return count;
+  }
+
   /** Registra la conexión de un usuario, esté o no suscrita a algo. */
   connect(userId: string, socket: WebSocket): void {
     const sockets = this.connections.get(userId) ?? new Set<WebSocket>();
     sockets.add(socket);
     this.connections.set(userId, sockets);
+
+    this.alive.add(socket);
+    socket.on('pong', () => this.alive.add(socket));
+  }
+
+  /**
+   * Una ronda del heartbeat: termina las conexiones que no han respondido al ping anterior (un
+   * móvil sin cobertura no llega a cerrar la suya) y vuelve a hacer ping al resto.
+   */
+  heartbeat(): void {
+    for (const sockets of [...this.connections.values()]) {
+      for (const socket of [...sockets]) {
+        if (!this.alive.has(socket)) {
+          socket.terminate();
+          continue;
+        }
+        this.alive.delete(socket);
+        if (socket.readyState === socket.OPEN) socket.ping();
+      }
+    }
   }
 
   /** Olvida la conexión y la saca de todas sus salas (al cerrarse). */

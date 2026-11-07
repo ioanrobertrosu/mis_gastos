@@ -295,7 +295,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: un miembro expulsado deja de recibir eventos inmediatamente
 - [x] 🟢 Implementar la desuscripción al perder la membresía
   - **Nota:** expulsión/abandono/presupuesto borrado → `{ type: "unsubscribed", budgetId, reason: REMOVED|LEFT|BUDGET_DELETED }` (la conexión sigue abierta para sus otros presupuestos). Cuenta borrada → cierre 4403 de todas sus conexiones. El expulsado sale de la sala antes de publicar su baja. `subscribe` comprueba la membresía, entra en la sala y vuelve a comprobarla, para cubrir una expulsión simultánea.
-- [ ] Heartbeat ping/pong y limpieza de conexiones muertas
+- [x] Heartbeat ping/pong y limpieza de conexiones muertas
+  - **Nota:** ping cada 30 s (`heartbeatIntervalMs` en `buildApp`); la conexión que no responde antes del siguiente ping se termina y sale de sus salas.
 
 ---
 

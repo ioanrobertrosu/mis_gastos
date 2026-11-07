@@ -25,6 +25,8 @@ export interface BuildAppOptions extends FastifyServerOptions {
   corsOrigins?: string[];
   /** Administración de Supabase Auth (borrado de cuentas). Por defecto no hace nada (tests). */
   authAdmin?: AuthAdmin;
+  /** Cada cuánto se comprueba que las conexiones WebSocket siguen vivas. Por defecto 30 s. */
+  heartbeatIntervalMs?: number;
 }
 
 export async function buildApp({
@@ -33,6 +35,7 @@ export async function buildApp({
   exposeInternalErrors = false,
   corsOrigins = [],
   authAdmin = NOOP_AUTH_ADMIN,
+  heartbeatIntervalMs = 30_000,
   ...options
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ ...options, schemaController });
@@ -45,6 +48,9 @@ export async function buildApp({
   await app.register(authPlugin, auth);
   await app.register(budgetAccessPlugin);
   app.decorate('realtime', new RealtimeHub());
+  const heartbeat = setInterval(() => app.realtime.heartbeat(), heartbeatIntervalMs);
+  heartbeat.unref();
+  app.addHook('onClose', async () => clearInterval(heartbeat));
   await app.register(websocket, {
     options: {
       maxPayload: MAX_CLIENT_MESSAGE_BYTES,
