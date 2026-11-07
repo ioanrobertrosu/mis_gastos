@@ -32,6 +32,7 @@
     "@fastify/helmet": "^13.2.0",
     "@fastify/rate-limit": "^11.2.1",
     "@fastify/type-provider-typebox": "^5.2.0",
+    "@fastify/websocket": "^11.3.7",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "@sinclair/typebox": "^0.34.52",
@@ -45,6 +46,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.2",
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
@@ -54,6 +56,7 @@
     "tsx": "^4.23.15",
     "typescript": "~6.0",
     "typescript-eslint": "^8.72.1",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "ws": "^8.22.1"
   }
 }

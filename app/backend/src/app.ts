@@ -1,8 +1,11 @@
+import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { schemaController } from './config/validation.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { apiRoutes } from './modules/index.js';
 import { healthRoutes } from './modules/health/health.routes.js';
+import { RealtimeHub } from './modules/realtime/hub.js';
+import { BEARER_PROTOCOL, MAX_CLIENT_MESSAGE_BYTES } from './modules/realtime/realtime.routes.js';
 import { type AuthAdmin, NOOP_AUTH_ADMIN } from './modules/users/auth-admin.js';
 import { authPlugin, type AuthOptions } from './plugins/auth.js';
 import { budgetAccessPlugin } from './plugins/budget-access.js';
@@ -41,6 +44,14 @@ export async function buildApp({
   // Antes de cualquier ruta: un `preHandler: app.authenticate` indefinido dejaría la ruta pública.
   await app.register(authPlugin, auth);
   await app.register(budgetAccessPlugin);
+  app.decorate('realtime', new RealtimeHub());
+  await app.register(websocket, {
+    options: {
+      maxPayload: MAX_CLIENT_MESSAGE_BYTES,
+      // Nunca se devuelve el subprotocolo con el token, solo `bearer`.
+      handleProtocols: (protocols) => (protocols.has(BEARER_PROTOCOL) ? BEARER_PROTOCOL : false),
+    },
+  });
 
   // /health queda fuera del prefijo: lo consume el healthcheck de Docker.
   await app.register(healthRoutes);

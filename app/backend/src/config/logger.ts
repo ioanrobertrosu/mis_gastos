@@ -3,14 +3,18 @@ import type { Env } from './env.js';
 
 type LoggerOptions = Exclude<FastifyServerOptions['logger'], boolean | undefined>;
 
-// Nunca deben llegar a los logs: el JWT de Supabase y las cookies de sesión.
+// Nunca deben llegar a los logs: el JWT de Supabase (también en el subprotocolo WebSocket, por
+// donde lo envían los navegadores) y las cookies de sesión.
 const REDACT_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',
+  'req.headers["sec-websocket-protocol"]',
   'headers.authorization',
   'headers.cookie',
+  'headers["sec-websocket-protocol"]',
   '*.headers.authorization',
   '*.headers.cookie',
+  '*.headers["sec-websocket-protocol"]',
 ];
 
 export function buildLoggerOptions(nodeEnv: Env['NODE_ENV']): LoggerOptions {

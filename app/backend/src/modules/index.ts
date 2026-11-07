@@ -5,6 +5,7 @@ import { categoryRoutes } from './categories/categories.routes.js';
 import { goalRoutes } from './goals/goals.routes.js';
 import { invitationRoutes } from './invitations/invitations.routes.js';
 import { memberRoutes } from './members/members.routes.js';
+import { realtimeRoutes } from './realtime/realtime.routes.js';
 import { transactionRoutes } from './transactions/transactions.routes.js';
 import { meRoutes } from './users/me.routes.js';
 
@@ -18,4 +19,5 @@ export const apiRoutes: FastifyPluginAsync = async (app) => {
   await app.register(transactionRoutes);
   await app.register(goalRoutes);
   await app.register(activityRoutes);
+  await app.register(realtimeRoutes);
 };

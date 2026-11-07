@@ -17,7 +17,7 @@ function captureStream() {
 }
 
 describe('buildLoggerOptions', () => {
-  it('redacta las cabeceras authorization y cookie en los logs', async () => {
+  it('redacta las cabeceras con credenciales en los logs', async () => {
     const { stream, output } = captureStream();
     const app = await buildApp({
       auth: TEST_AUTH,
@@ -32,7 +32,11 @@ describe('buildLoggerOptions', () => {
     await app.inject({
       method: 'GET',
       url: '/echo',
-      headers: { authorization: 'Bearer secreto.jwt.token', cookie: 'sb-session=secreto' },
+      headers: {
+        authorization: 'Bearer secreto.jwt.token',
+        cookie: 'sb-session=secreto',
+        'sec-websocket-protocol': 'bearer, secreto.jwt.token',
+      },
     });
     await app.close();
 

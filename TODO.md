@@ -284,10 +284,11 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 
 ## Fase 7 — Tiempo real (WebSocket)
 
-- [ ] Instalar `@fastify/websocket`
-- [ ] 🔴 Test: la conexión WSS sin JWT válido se rechaza
-- [ ] 🔴 Test: el cliente solo puede suscribirse a presupuestos de los que es miembro
-- [ ] 🟢 Implementar la autenticación del handshake y las salas por `budgetId`
+- [x] Instalar `@fastify/websocket`
+- [x] 🔴 Test: la conexión WSS sin JWT válido se rechaza
+- [x] 🔴 Test: el cliente solo puede suscribirse a presupuestos de los que es miembro
+- [x] 🟢 Implementar la autenticación del handshake y las salas por `budgetId`
+  - **Nota:** `GET /api/v1/ws`. JWT en `Authorization` (móvil) o `new WebSocket(url, ['bearer', token])` para navegadores (se negocia solo `bearer`; la cabecera tiene prioridad); nunca en la URL, y `Sec-WebSocket-Protocol` redactado en los logs. Cierre 4401 al caducar el token; mensajes de más de 4 KB → 1009. `subscribe`/`unsubscribe`; no miembro o inexistente → `NOT_FOUND`. Salas en memoria (`RealtimeHub`): una sola instancia del backend.
 - [ ] 🔴 Test: tras una mutación, los demás clientes del presupuesto reciben un evento ligero `{ type, budgetId, entity, id }` (sin payload completo)
 - [ ] 🟢 Implementar el emisor de eventos de dominio → broadcast
 - [ ] 🔴 Test: un miembro expulsado deja de recibir eventos inmediatamente

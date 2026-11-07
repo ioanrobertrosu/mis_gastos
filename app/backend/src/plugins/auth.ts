@@ -17,6 +17,8 @@ declare module 'fastify' {
   }
   interface FastifyRequest {
     user: AuthUser;
+    /** Caducidad del JWT en ms desde epoch: las conexiones largas no pueden sobrevivirle. */
+    tokenExpiresAt: number;
   }
 }
 
@@ -70,6 +72,7 @@ export const authPlugin = fp<AuthOptions>(
     const algorithms = ['HS256', ...(jwks ? ASYMMETRIC_ALGORITHMS : [])];
 
     app.decorateRequest('user', null as unknown as AuthUser);
+    app.decorateRequest('tokenExpiresAt', 0);
 
     app.decorate('authenticate', async (request: FastifyRequest) => {
       const token = BEARER.exec(request.headers.authorization ?? '')?.[1];
@@ -92,6 +95,8 @@ export const authPlugin = fp<AuthOptions>(
       const claims = identityClaims(payload);
       await syncUser(app.prisma, claims);
       request.user = { sub: claims.sub, email: claims.email };
+      // `requiredClaims` garantiza que `exp` existe.
+      request.tokenExpiresAt = (payload.exp as number) * 1000;
     });
   },
   { name: 'auth', dependencies: ['prisma'] },
