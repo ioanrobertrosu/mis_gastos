@@ -16,7 +16,8 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
     ports:
-      - '3000:3000'
+      # Solo local: sin TLS, los JWT viajarían en claro. Se expone a través de un proxy inverso.
+      - '127.0.0.1:3000:3000'
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
       interval: 30s

@@ -318,7 +318,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** sin cambios en secretos (ninguno en git; `.env` fuera de git y de la imagen), imagen sin root, Helmet, CORS cerrado y errores 500 sin detalles. `npm audit`: 0 en producción; 10 moderadas en desarrollo. Los contadores viven en memoria (una sola instancia). `TRUST_PROXY` hay que ajustarlo al desplegar.
 - [ ] Revisar consultas N+1 y planes `EXPLAIN` de los listados paginados
 - [ ] Pipeline de CI (GitHub Actions): lint → typecheck → test → build de la imagen Docker
-- [ ] Definir el destino de despliegue del contenedor en producción
+- [x] Definir el destino de despliegue del contenedor en producción
+  - **Decisión:** VM de Oracle (host SSH `ORACLE_VM`, usuario `ubuntu`, ARM64), en `/home/ubuntu/prod`. La imagen se construye en el servidor. API solo en `127.0.0.1:3000` hasta que haya un proxy inverso con TLS.
+- [ ] Exponer la API con un proxy inverso y TLS (requiere dominio) y ajustar `TRUST_PROXY`
 
 ---
 
