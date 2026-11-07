@@ -8,3 +8,7 @@ services:
     volumes:
       - ./app/backend/src:/app/src
     command: npm run dev
+
+  # En local no hay dominio ni certificado: el proxy solo se usa en producción.
+  caddy:
+    profiles: [production-only]

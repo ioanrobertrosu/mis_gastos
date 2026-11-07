@@ -27,6 +27,31 @@ services:
     networks:
       - internal_network
 
+  # Proxy inverso con TLS automático (Let's Encrypt). Único servicio expuesto a Internet.
+  caddy:
+    image: caddy:2.10
+    container_name: mis_gastos_caddy
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-mis-gastos.duckdns.org}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificados y claves: deben sobrevivir a los reinicios (Let's Encrypt limita las emisiones).
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal_network
+
+volumes:
+  caddy_data:
+  caddy_config:
+
 networks:
   internal_network:
     driver: bridge

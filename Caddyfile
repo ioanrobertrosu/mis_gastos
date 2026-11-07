@@ -1,0 +1,6 @@
+# Caddy obtiene y renueva el certificado de {$API_DOMAIN} y redirige HTTP a HTTPS.
+# Proxifica también los WebSocket (/api/v1/ws) sin configuración extra.
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy api:3000
+}
