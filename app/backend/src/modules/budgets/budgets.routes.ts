@@ -80,7 +80,12 @@ export const budgetRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
       preHandler: app.requirePermission('budget:update'),
     },
-    (request) => updateBudget(app.prisma, request.user.sub, request.params.id, request.body),
+    async (request) => {
+      const budgetId = request.params.id;
+      const budget = await updateBudget(app.prisma, request.user.sub, budgetId, request.body);
+      app.realtime.publish({ type: 'updated', budgetId, entity: 'budget', id: budgetId });
+      return budget;
+    },
   );
 
   app.get(
@@ -100,7 +105,9 @@ export const budgetRoutes: FastifyPluginAsyncTypebox = async (app) => {
     '/budgets/:id',
     { schema: { params: IdParamsSchema }, preHandler: app.requirePermission('budget:delete') },
     async (request, reply) => {
-      await deleteBudget(app.prisma, request.params.id);
+      const budgetId = request.params.id;
+      await deleteBudget(app.prisma, budgetId);
+      app.realtime.publish({ type: 'deleted', budgetId, entity: 'budget', id: budgetId });
       return reply.code(204).send();
     },
   );

@@ -64,14 +64,18 @@ export const memberRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
       preHandler: app.requirePermission('member:manage'),
     },
-    (request) =>
-      changeMemberRole(
+    async (request) => {
+      const { id: budgetId, userId } = request.params;
+      const member = await changeMemberRole(
         app.prisma,
-        request.params.id,
+        budgetId,
         request.user.sub,
-        request.params.userId,
+        userId,
         request.body.role,
-      ),
+      );
+      app.realtime.publish({ type: 'updated', budgetId, entity: 'member', id: userId });
+      return member;
+    },
   );
 
   app.delete(
@@ -81,7 +85,9 @@ export const memberRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('member:manage'),
     },
     async (request, reply) => {
-      await removeMember(app.prisma, request.params.id, request.user.sub, request.params.userId);
+      const { id: budgetId, userId } = request.params;
+      await removeMember(app.prisma, budgetId, request.user.sub, userId);
+      app.realtime.publish({ type: 'deleted', budgetId, entity: 'member', id: userId });
       return reply.code(204).send();
     },
   );
@@ -90,7 +96,9 @@ export const memberRoutes: FastifyPluginAsyncTypebox = async (app) => {
     '/budgets/:id/membership',
     { schema: { params: IdParamsSchema }, preHandler: app.requirePermission('budget:read') },
     async (request, reply) => {
-      await leaveBudget(app.prisma, request.params.id, request.user.sub);
+      const budgetId = request.params.id;
+      await leaveBudget(app.prisma, budgetId, request.user.sub);
+      app.realtime.publish({ type: 'deleted', budgetId, entity: 'member', id: request.user.sub });
       return reply.code(204).send();
     },
   );
@@ -105,7 +113,12 @@ export const memberRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
       preHandler: app.requirePermission('member:manage'),
     },
-    (request) =>
-      transferOwnership(app.prisma, request.params.id, request.user.sub, request.body.userId),
+    async (request) => {
+      const { id: budgetId } = request.params;
+      const { userId } = request.body;
+      const budget = await transferOwnership(app.prisma, budgetId, request.user.sub, userId);
+      app.realtime.publish({ type: 'updated', budgetId, entity: 'member', id: userId });
+      return budget;
+    },
   );
 };

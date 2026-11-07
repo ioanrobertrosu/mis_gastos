@@ -108,8 +108,11 @@ export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('goal:manage'),
     },
     async (request, reply) => {
+      const budgetId = request.params.id;
+      const goal = await createGoal(app.prisma, budgetId, request.user.sub, request.body);
+      app.realtime.publish({ type: 'created', budgetId, entity: 'goal', id: goal.id });
       reply.code(201);
-      return createGoal(app.prisma, request.params.id, request.user.sub, request.body);
+      return goal;
     },
   );
 
@@ -123,14 +126,12 @@ export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
       preHandler: app.requirePermission('goal:manage'),
     },
-    (request) =>
-      updateGoal(
-        app.prisma,
-        request.params.id,
-        request.params.goalId,
-        request.user.sub,
-        request.body,
-      ),
+    async (request) => {
+      const { id: budgetId, goalId } = request.params;
+      const goal = await updateGoal(app.prisma, budgetId, goalId, request.user.sub, request.body);
+      app.realtime.publish({ type: 'updated', budgetId, entity: 'goal', id: goalId });
+      return goal;
+    },
   );
 
   app.get(
@@ -156,14 +157,18 @@ export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('goal:contribute'),
     },
     async (request, reply) => {
-      reply.code(201);
-      return addContribution(
+      const { id: budgetId, goalId } = request.params;
+      const result = await addContribution(
         app.prisma,
-        request.params.id,
-        request.params.goalId,
+        budgetId,
+        goalId,
         request.user.sub,
         request.body.amount,
       );
+      // La aportación cambia la meta; el cliente refresca la meta y sus contribuciones a la vez.
+      app.realtime.publish({ type: 'updated', budgetId, entity: 'goal', id: goalId });
+      reply.code(201);
+      return result;
     },
   );
 
@@ -171,7 +176,9 @@ export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
     '/budgets/:id/goals/:goalId',
     { schema: { params: GoalParamsSchema }, preHandler: app.requirePermission('goal:manage') },
     async (request, reply) => {
-      await deleteGoal(app.prisma, request.params.id, request.params.goalId, request.user.sub);
+      const { id: budgetId, goalId } = request.params;
+      await deleteGoal(app.prisma, budgetId, goalId, request.user.sub);
+      app.realtime.publish({ type: 'deleted', budgetId, entity: 'goal', id: goalId });
       return reply.code(204).send();
     },
   );

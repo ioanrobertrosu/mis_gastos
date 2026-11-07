@@ -24,9 +24,11 @@ async function membershipsOf(tx: Prisma.TransactionClient, userId: string) {
  *   el email se sustituye para liberar el original.
  *
  * Bloqueos: presupuestos → usuario, el mismo orden que la aceptación de invitaciones.
+ *
+ * @returns Los presupuestos que siguen existiendo y de los que ha salido (para notificarlos).
  */
-export async function deleteAccount(prisma: PrismaClient, userId: string): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+export async function deleteAccount(prisma: PrismaClient, userId: string): Promise<string[]> {
+  return prisma.$transaction(async (tx) => {
     const locked = (await membershipsOf(tx, userId)).map(({ budgetId }) => budgetId);
     await lockBudgets(tx, locked);
     await tx.$queryRaw`SELECT 1 FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
@@ -39,6 +41,7 @@ export async function deleteAccount(prisma: PrismaClient, userId: string): Promi
     );
 
     const reason = 'ACCOUNT_DELETED';
+    const leftBudgets: string[] = [];
     for (const { budgetId, role } of memberships) {
       if (role === 'OWNER') {
         const successor = await tx.budgetMember.findFirst({
@@ -65,6 +68,7 @@ export async function deleteAccount(prisma: PrismaClient, userId: string): Promi
         action: 'MEMBER_LEFT',
         metadata: { userId, reason },
       });
+      leftBudgets.push(budgetId);
     }
 
     await tx.budgetMember.deleteMany({ where: { userId } });
@@ -78,5 +82,6 @@ export async function deleteAccount(prisma: PrismaClient, userId: string): Promi
         deletedAt: new Date(),
       },
     });
+    return leftBudgets;
   }, LOCKING_TRANSACTION);
 }

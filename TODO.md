@@ -289,8 +289,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] 🔴 Test: el cliente solo puede suscribirse a presupuestos de los que es miembro
 - [x] 🟢 Implementar la autenticación del handshake y las salas por `budgetId`
   - **Nota:** `GET /api/v1/ws`. JWT en `Authorization` (móvil) o `new WebSocket(url, ['bearer', token])` para navegadores (se negocia solo `bearer`; la cabecera tiene prioridad); nunca en la URL, y `Sec-WebSocket-Protocol` redactado en los logs. Cierre 4401 al caducar el token; mensajes de más de 4 KB → 1009. `subscribe`/`unsubscribe`; no miembro o inexistente → `NOT_FOUND`. Salas en memoria (`RealtimeHub`): una sola instancia del backend.
-- [ ] 🔴 Test: tras una mutación, los demás clientes del presupuesto reciben un evento ligero `{ type, budgetId, entity, id }` (sin payload completo)
-- [ ] 🟢 Implementar el emisor de eventos de dominio → broadcast
+- [x] 🔴 Test: tras una mutación, los demás clientes del presupuesto reciben un evento ligero `{ type, budgetId, entity, id }` (sin payload completo)
+- [x] 🟢 Implementar el emisor de eventos de dominio → broadcast
+  - **Nota:** `RealtimeHub.publish`, llamado desde cada ruta tras resolverse el servicio (ya confirmado; si la mutación falla, no hay evento). Eventos `{ type: created|updated|deleted, budgetId, entity: budget|member|category|transaction|goal, id }`, sin datos. Una aportación es `updated` de la meta. Llegan a todas las conexiones suscritas, también a las del autor.
 - [ ] 🔴 Test: un miembro expulsado deja de recibir eventos inmediatamente
 - [ ] 🟢 Implementar la desuscripción al perder la membresía
 - [ ] Heartbeat ping/pong y limpieza de conexiones muertas

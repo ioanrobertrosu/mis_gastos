@@ -103,7 +103,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (app) => {
 
   app.delete('/me', async (request, reply) => {
     const userId = request.user.sub;
-    await deleteAccount(app.prisma, userId);
+    const leftBudgets = await deleteAccount(app.prisma, userId);
+    for (const budgetId of leftBudgets) {
+      app.realtime.publish({ type: 'deleted', budgetId, entity: 'member', id: userId });
+    }
 
     // Tras confirmar el borrado local: si Supabase falla, la cuenta ya está anonimizada y su
     // token recibe 401, así que no se deshace. Se registra para limpiarla manualmente.

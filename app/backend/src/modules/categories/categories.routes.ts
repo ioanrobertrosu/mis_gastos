@@ -95,8 +95,11 @@ export const categoryRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('category:manage'),
     },
     async (request, reply) => {
+      const budgetId = request.params.id;
+      const category = await createCategory(app.prisma, budgetId, request.user.sub, request.body);
+      app.realtime.publish({ type: 'created', budgetId, entity: 'category', id: category.id });
       reply.code(201);
-      return createCategory(app.prisma, request.params.id, request.user.sub, request.body);
+      return category;
     },
   );
 
@@ -110,14 +113,18 @@ export const categoryRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
       preHandler: app.requirePermission('category:manage'),
     },
-    (request) =>
-      updateCategory(
+    async (request) => {
+      const { id: budgetId, categoryId } = request.params;
+      const category = await updateCategory(
         app.prisma,
-        request.params.id,
-        request.params.categoryId,
+        budgetId,
+        categoryId,
         request.user.sub,
         request.body,
-      ),
+      );
+      app.realtime.publish({ type: 'updated', budgetId, entity: 'category', id: categoryId });
+      return category;
+    },
   );
 
   app.delete(
@@ -127,12 +134,9 @@ export const categoryRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('category:manage'),
     },
     async (request, reply) => {
-      await deactivateCategory(
-        app.prisma,
-        request.params.id,
-        request.params.categoryId,
-        request.user.sub,
-      );
+      const { id: budgetId, categoryId } = request.params;
+      await deactivateCategory(app.prisma, budgetId, categoryId, request.user.sub);
+      app.realtime.publish({ type: 'deleted', budgetId, entity: 'category', id: categoryId });
       return reply.code(204).send();
     },
   );

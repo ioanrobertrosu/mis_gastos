@@ -91,8 +91,21 @@ export const transactionRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('transaction:create'),
     },
     async (request, reply) => {
+      const budgetId = request.params.id;
+      const transaction = await createTransaction(
+        app.prisma,
+        budgetId,
+        request.user.sub,
+        request.body,
+      );
+      app.realtime.publish({
+        type: 'created',
+        budgetId,
+        entity: 'transaction',
+        id: transaction.id,
+      });
       reply.code(201);
-      return createTransaction(app.prisma, request.params.id, request.user.sub, request.body);
+      return transaction;
     },
   );
 
@@ -146,14 +159,18 @@ export const transactionRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
       preHandler: app.requirePermission('transaction:edit-own'),
     },
-    (request) =>
-      updateTransaction(
+    async (request) => {
+      const { id: budgetId, transactionId } = request.params;
+      const transaction = await updateTransaction(
         app.prisma,
-        request.params.id,
-        request.params.transactionId,
+        budgetId,
+        transactionId,
         { userId: request.user.sub, role: request.membership.role },
         request.body,
-      ),
+      );
+      app.realtime.publish({ type: 'updated', budgetId, entity: 'transaction', id: transactionId });
+      return transaction;
+    },
   );
 
   app.delete(
@@ -163,10 +180,12 @@ export const transactionRoutes: FastifyPluginAsyncTypebox = async (app) => {
       preHandler: app.requirePermission('transaction:edit-own'),
     },
     async (request, reply) => {
-      await deleteTransaction(app.prisma, request.params.id, request.params.transactionId, {
+      const { id: budgetId, transactionId } = request.params;
+      await deleteTransaction(app.prisma, budgetId, transactionId, {
         userId: request.user.sub,
         role: request.membership.role,
       });
+      app.realtime.publish({ type: 'deleted', budgetId, entity: 'transaction', id: transactionId });
       return reply.code(204).send();
     },
   );

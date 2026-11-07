@@ -66,8 +66,11 @@ export const invitationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
     },
     async (request, reply) => {
+      const userId = request.user.sub;
+      const budget = await acceptInvitation(app.prisma, userId, request.params.token);
+      app.realtime.publish({ type: 'created', budgetId: budget.id, entity: 'member', id: userId });
       reply.code(201);
-      return acceptInvitation(app.prisma, request.user.sub, request.params.token);
+      return budget;
     },
   );
 
