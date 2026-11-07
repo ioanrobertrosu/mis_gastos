@@ -8,6 +8,8 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/generated/**', 'src/server.ts'],
       reporter: ['text', 'html', 'lcov'],
+      // Cerca del nivel real: un umbral bajo dejaría caer la cobertura sin que nadie lo note.
+      thresholds: { statements: 95, branches: 90, functions: 95, lines: 95 },
     },
     projects: [
       {

@@ -310,7 +310,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] Añadir `requestId` / correlación en los logs de Pino
   - **Nota:** `x-request-id` en todas las respuestas y `reqId` en los logs. Se reutiliza el del proxy si es válido (1–128 caracteres `A-Za-z0-9._-`); si no, UUID.
 - [ ] Documentación OpenAPI (`@fastify/swagger` + UI solo en dev)
-- [ ] Umbral mínimo de cobertura en Vitest (p. ej. 80 %) y que falle el CI si no se alcanza
+- [x] Umbral mínimo de cobertura en Vitest (p. ej. 80 %) y que falle el CI si no se alcanza
+  - **Nota:** 95 % en líneas, sentencias y funciones; 90 % en ramas (nivel actual: 99/99/99/96). Se aplica con `npm run test:coverage`; el paso de CI queda pendiente.
 - [ ] Revisión de seguridad: rate limits, tamaño máximo de body, cabeceras, secretos fuera de los logs
 - [ ] Revisar consultas N+1 y planes `EXPLAIN` de los listados paginados
 - [ ] Pipeline de CI (GitHub Actions): lint → typecheck → test → build de la imagen Docker
