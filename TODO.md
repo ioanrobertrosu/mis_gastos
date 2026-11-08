@@ -309,7 +309,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** adelantado de la Fase 8: el proyecto Supabase ya tiene la nueva clave en standby y no debe rotarse hasta que el backend la verifique.
 - [x] Añadir `requestId` / correlación en los logs de Pino
   - **Nota:** `x-request-id` en todas las respuestas y `reqId` en los logs. Se reutiliza el del proxy si es válido (1–128 caracteres `A-Za-z0-9._-`); si no, UUID.
-- [ ] Documentación OpenAPI (`@fastify/swagger` + UI solo en dev)
+- [x] Documentación OpenAPI (`@fastify/swagger` + UI solo en dev)
+  - [x] 🔴 Test: sin la opción `docs` (producción) no hay `/docs` ni `/docs/json`; con ella, UI sin token y documento OpenAPI 3 con todas las rutas (`{id}`), cuerpos y respuestas de los esquemas TypeBox, y Bearer JWT en `/api/v1/*` (no en `/health`)
+  - [x] 🟢 `src/plugins/docs.ts`, registrado antes que las rutas; `server.ts` lo activa si `NODE_ENV !== 'production'`. UI en `http://localhost:3000/docs`.
+  - **Nota:** la UI no usa scripts inline, así que funciona con la CSP de Helmet. En Safari, `upgrade-insecure-requests` puede romperla sobre `http://localhost` (Chrome/Edge lo eximen).
 - [x] Umbral mínimo de cobertura en Vitest (p. ej. 80 %) y que falle el CI si no se alcanza
   - **Nota:** 95 % en líneas, sentencias y funciones; 90 % en ramas (nivel actual: 99/99/99/96). Se aplica con `npm run test:coverage`; el paso de CI queda pendiente.
 - [x] Revisión de seguridad: rate limits, tamaño máximo de body, cabeceras, secretos fuera de los logs

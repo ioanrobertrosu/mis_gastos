@@ -10,6 +10,7 @@ import { BEARER_PROTOCOL, MAX_CLIENT_MESSAGE_BYTES } from './modules/realtime/re
 import { type AuthAdmin, NOOP_AUTH_ADMIN } from './modules/users/auth-admin.js';
 import { authPlugin, type AuthOptions } from './plugins/auth.js';
 import { budgetAccessPlugin } from './plugins/budget-access.js';
+import { docsPlugin } from './plugins/docs.js';
 import { errorHandlerPlugin } from './plugins/error-handler.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { securityPlugin } from './plugins/security.js';
@@ -34,6 +35,8 @@ export interface BuildAppOptions extends FastifyServerOptions {
   rateLimitMax?: number;
   /** Número de proxies de confianza delante del backend. Por defecto 0. */
   trustedProxies?: number;
+  /** Documentación OpenAPI en `/docs`. Por defecto `false`: nunca en producción. */
+  docs?: boolean;
 }
 
 export async function buildApp({
@@ -45,6 +48,7 @@ export async function buildApp({
   heartbeatIntervalMs = 30_000,
   rateLimitMax = 300,
   trustedProxies = 0,
+  docs = false,
   ...options
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
@@ -79,6 +83,9 @@ export async function buildApp({
       handleProtocols: (protocols) => (protocols.has(BEARER_PROTOCOL) ? BEARER_PROTOCOL : false),
     },
   });
+
+  // Antes que las rutas: swagger las recoge según se registran.
+  if (docs) await app.register(docsPlugin, { apiPrefix: API_PREFIX });
 
   // /health queda fuera del prefijo: lo consume el healthcheck de Docker.
   await app.register(healthRoutes);

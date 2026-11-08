@@ -33,6 +33,8 @@
     "@fastify/cors": "^11.3.1",
     "@fastify/helmet": "^13.2.0",
     "@fastify/rate-limit": "^11.2.1",
+    "@fastify/swagger": "^9.9.3",
+    "@fastify/swagger-ui": "^6.1.3",
     "@fastify/type-provider-typebox": "^5.2.0",
     "@fastify/websocket": "^11.3.7",
     "@prisma/adapter-pg": "^7.10.1",
