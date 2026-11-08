@@ -92,9 +92,7 @@ describe('autenticación por JWT de Supabase', () => {
 
   it('un usuario ya registrado puede entrar con un token sin email (email undefined)', async () => {
     // Identidad ya existente: el alta (que exige email) no se ejecuta.
-    vi.mocked(prisma.identity.findUnique).mockResolvedValueOnce({
-      user: { deletedAt: null },
-    } as never);
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({ deletedAt: null } as never);
     const token = await signTestToken({ email: null });
 
     const response = await get(`Bearer ${token}`);

@@ -65,6 +65,19 @@ const ContributionListItemSchema = Type.Object({
   ]),
 });
 
+const ContributionPageSchema = Type.Object({
+  items: Type.Array(ContributionListItemSchema),
+  nextCursor: Type.Union([Type.String(), Type.Null()]),
+});
+
+const ContributionQuerySchema = Type.Object(
+  {
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+    cursor: Type.Optional(Type.String({ minLength: 1 })),
+  },
+  { additionalProperties: false },
+);
+
 const ContributionBodySchema = Type.Object(
   { amount: PositiveMoneySchema },
   { additionalProperties: false },
@@ -139,11 +152,13 @@ export const goalRoutes: FastifyPluginAsyncTypebox = async (app) => {
     {
       schema: {
         params: GoalParamsSchema,
-        response: { 200: Type.Array(ContributionListItemSchema) },
+        querystring: ContributionQuerySchema,
+        response: { 200: ContributionPageSchema },
       },
       preHandler: app.requirePermission('budget:read'),
     },
-    (request) => listContributions(app.prisma, request.params.id, request.params.goalId),
+    (request) =>
+      listContributions(app.prisma, request.params.id, request.params.goalId, request.query),
   );
 
   app.post(

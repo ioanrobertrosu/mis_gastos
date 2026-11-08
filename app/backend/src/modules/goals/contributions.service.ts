@@ -3,6 +3,7 @@ import { ConflictError } from '../../shared/errors.js';
 import { formatMoney } from '../../shared/money.js';
 import { LOCKING_TRANSACTION } from '../../shared/transactions.js';
 import { logActivity } from '../activity/activity.service.js';
+import { decodeContributionCursor, encodeContributionCursor } from './cursor.js';
 import { getGoal, type GoalView, goalNotFound, logIfReached, statusFor } from './goals.service.js';
 
 export interface ContributionView {
@@ -21,21 +22,40 @@ export interface ContributionListItem {
   author: { id: string; displayName: string | null; avatarUrl: string | null } | null;
 }
 
-/** Contribuciones de la meta, más recientes primero. */
+export const DEFAULT_CONTRIBUTION_PAGE_SIZE = 20;
+
+/**
+ * Contribuciones de la meta, más recientes primero. Paginación keyset por `(createdAt, id)`:
+ * las aportaciones nuevas entran por delante y no desplazan las páginas siguientes.
+ */
 export async function listContributions(
   prisma: PrismaClient,
   budgetId: string,
   goalId: string,
-): Promise<ContributionListItem[]> {
+  { limit = DEFAULT_CONTRIBUTION_PAGE_SIZE, cursor }: { limit?: number; cursor?: string } = {},
+): Promise<{ items: ContributionListItem[]; nextCursor: string | null }> {
+  const before = cursor === undefined ? undefined : decodeContributionCursor(cursor);
   const goal = await prisma.goal.findFirst({
     where: { id: goalId, budgetId },
     select: { id: true },
   });
   if (!goal) throw goalNotFound();
 
-  const contributions = await prisma.goalContribution.findMany({
-    where: { goalId },
+  const rows = await prisma.goalContribution.findMany({
+    where: {
+      goalId,
+      ...(before === undefined
+        ? {}
+        : {
+            createdAt: { lte: before.createdAt },
+            OR: [
+              { createdAt: { lt: before.createdAt } },
+              { createdAt: before.createdAt, id: { lt: before.id } },
+            ],
+          }),
+    },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: limit + 1,
     select: {
       id: true,
       amount: true,
@@ -43,12 +63,18 @@ export async function listContributions(
       user: { select: { id: true, displayName: true, avatarUrl: true } },
     },
   });
-  return contributions.map(({ user, ...contribution }) => ({
-    ...contribution,
-    amount: formatMoney(contribution.amount),
-    createdAt: contribution.createdAt.toISOString(),
-    author: user,
-  }));
+
+  const page = rows.slice(0, limit);
+  const last = page.at(-1);
+  return {
+    items: page.map(({ user, ...contribution }) => ({
+      ...contribution,
+      amount: formatMoney(contribution.amount),
+      createdAt: contribution.createdAt.toISOString(),
+      author: user,
+    })),
+    nextCursor: rows.length > limit && last ? encodeContributionCursor(last) : null,
+  };
 }
 
 /**

@@ -12,6 +12,7 @@ export function fakePrisma(
     upsert: vi.fn(async () => ({})),
     createMany: vi.fn(async () => ({ count: 1 })),
     findUnique: vi.fn(async () => null),
+    findFirst: vi.fn(async () => null),
   });
   const fake: Record<string, unknown> = {
     $queryRaw: vi.fn(queryRaw),

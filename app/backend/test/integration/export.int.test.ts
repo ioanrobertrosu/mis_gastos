@@ -1,9 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app.js';
+import { exportTransactionsCsv } from '../../src/modules/transactions/export.service.js';
 import { seedCategory, seedTransaction } from '../helpers/budget-data.js';
 import { testPrisma } from '../helpers/db.js';
 import { TEST_AUTH } from '../helpers/jwt.js';
+import { QueryCounter } from '../helpers/query-count.js';
 import { ANA, authHeader, BEA, CARLOS, seedBudget, type TestUser } from '../helpers/users.js';
 
 const BOM = '﻿';
@@ -146,6 +148,41 @@ describe('GET /api/v1/budgets/:id/export', () => {
       expect(result).toHaveLength(1205);
       expect(new Set(result).size).toBe(1205);
       expect(dates).toEqual([...dates].sort());
+    }, 30_000);
+  });
+
+  describe('consultas', () => {
+    // En producción cada consulta es un viaje de ida y vuelta a la BD (~30 ms).
+    it('una consulta por lote de 1000 filas; categorías y autores, una sola vez', async () => {
+      const { budgetId, categoryId } = await budget();
+      const other = await seedCategory(budgetId, { name: 'Ocio' });
+      await testPrisma.user.update({ where: { id: CARLOS.sub }, data: { displayName: 'Carlos' } });
+      await testPrisma.transaction.createMany({
+        data: Array.from({ length: 2499 }, (_, i) => ({
+          budgetId,
+          categoryId: i % 2 === 0 ? categoryId : other,
+          createdById: ANA.sub,
+          amount: '1.00',
+          date: new Date(`2026-10-${String((i % 30) + 1).padStart(2, '0')}T00:00:00.000Z`),
+        })),
+      });
+      // Única fila del último lote, con un autor que no aparece en los anteriores.
+      await seedTransaction(budgetId, other, { createdBy: CARLOS, date: '2026-10-31' });
+      const counter = new QueryCounter();
+
+      let csv = '';
+      for await (const chunk of exportTransactionsCsv(counter.prisma, budgetId, {
+        from: '2026-10-01',
+        to: '2026-10-31',
+      })) {
+        csv += chunk;
+      }
+
+      const lines = csv.split('\r\n').slice(1, -1);
+      expect(lines).toHaveLength(2500);
+      expect(lines.at(-1)).toBe('2026-10-31,Ocio,10.00,,no,Carlos');
+      // 3 lotes (1000 + 1000 + 500) + categorías + miembros del presupuesto.
+      expect(counter.queries.length).toBeLessThanOrEqual(5);
     }, 30_000);
   });
 

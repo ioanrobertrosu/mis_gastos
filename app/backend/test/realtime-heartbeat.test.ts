@@ -18,7 +18,7 @@ function wait(ms: number) {
 
 beforeEach(async () => {
   const prisma = fakePrisma();
-  vi.mocked(prisma.identity.findUnique).mockResolvedValue({ user: { deletedAt: null } } as never);
+  vi.mocked(prisma.user.findFirst).mockResolvedValue({ deletedAt: null } as never);
   vi.mocked(prisma.budgetMember.findUnique).mockResolvedValue({ id: 'membresia' } as never);
   app = await buildApp({ auth: TEST_AUTH, prisma, heartbeatIntervalMs: INTERVAL_MS });
   await app.listen({ port: 0, host: '127.0.0.1' });

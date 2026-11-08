@@ -21,9 +21,7 @@ describe('suscripción simultánea a la pérdida de la membresía', () => {
     const prisma = fakePrisma();
     // La identidad ya existe; la membresía es válida en la primera comprobación pero ya no en
     // la segunda: la expulsión se ha confirmado entre ambas y su limpieza de la sala ya pasó.
-    vi.mocked(prisma.identity.findUnique).mockResolvedValue({
-      user: { deletedAt: null },
-    } as never);
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ deletedAt: null } as never);
     vi.mocked(prisma.budgetMember.findUnique)
       .mockResolvedValueOnce({ id: 'membresia' } as never)
       .mockResolvedValueOnce(null);

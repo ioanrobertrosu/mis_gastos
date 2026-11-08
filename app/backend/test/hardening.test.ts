@@ -18,7 +18,7 @@ afterEach(async () => {
 
 async function build(options: Partial<BuildAppOptions> = {}) {
   const prisma = fakePrisma();
-  vi.mocked(prisma.identity.findUnique).mockResolvedValue({ user: { deletedAt: null } } as never);
+  vi.mocked(prisma.user.findFirst).mockResolvedValue({ deletedAt: null } as never);
   app = await buildApp({ auth: TEST_AUTH, prisma, ...options });
   return app;
 }

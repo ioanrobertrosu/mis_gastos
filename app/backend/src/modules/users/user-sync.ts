@@ -18,13 +18,14 @@ export interface IdentityClaims {
 export async function syncUser(prisma: PrismaClient, claims: IdentityClaims): Promise<void> {
   const { sub, email, provider, providerId } = claims;
 
-  // Camino habitual: la identidad ya existe (y con ella, su usuario).
-  const identity = await prisma.identity.findUnique({
-    where: { provider_providerId: { provider, providerId } },
-    select: { user: { select: { deletedAt: true } } },
+  // Camino habitual: la identidad ya existe (y con ella, su usuario). Se consulta desde el
+  // usuario con un filtro de relación: una sola consulta (`include` desde Identity serían dos).
+  const known = await prisma.user.findFirst({
+    where: { identities: { some: { provider, providerId } } },
+    select: { deletedAt: true },
   });
-  if (identity) {
-    if (identity.user.deletedAt) throw new UnauthorizedError();
+  if (known) {
+    if (known.deletedAt) throw new UnauthorizedError();
     return;
   }
 

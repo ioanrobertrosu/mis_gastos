@@ -231,12 +231,26 @@ describe('POST /api/v1/budgets/:id/goals/:goalId/contributions', () => {
 });
 
 describe('GET /api/v1/budgets/:id/goals/:goalId/contributions', () => {
-  async function listContributions(user: TestUser, budgetId: string, goalId: string) {
+  async function listContributions(user: TestUser, budgetId: string, goalId: string, query = '') {
     return app.inject({
       method: 'GET',
-      url: `/api/v1/budgets/${budgetId}/goals/${goalId}/contributions`,
+      url: `/api/v1/budgets/${budgetId}/goals/${goalId}/contributions${query ? `?${query}` : ''}`,
       headers: await authHeader(user),
     });
+  }
+
+  /** Recorre todas las páginas siguiendo `nextCursor`. */
+  async function allPages(user: TestUser, budgetId: string, goalId: string, limit: number) {
+    const pages: { items: { id: string }[]; nextCursor: string | null }[] = [];
+    let cursor: string | null = null;
+    do {
+      const query: string = `limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`;
+      const response = await listContributions(user, budgetId, goalId, query);
+      expect(response.statusCode).toBe(200);
+      pages.push(response.json());
+      cursor = pages.at(-1)!.nextCursor;
+    } while (cursor);
+    return pages;
   }
 
   async function seedContribution(
@@ -266,7 +280,8 @@ describe('GET /api/v1/budgets/:id/goals/:goalId/contributions', () => {
     const response = await listContributions(CARLOS, id, goal);
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual([
+    expect(response.json().nextCursor).toBeNull();
+    expect(response.json().items).toEqual([
       {
         id: newer,
         amount: '25.50',
@@ -299,7 +314,7 @@ describe('GET /api/v1/budgets/:id/goals/:goalId/contributions', () => {
 
     const response = await listContributions(ANA, id, goal);
 
-    expect(response.json()).toEqual([
+    expect(response.json().items).toEqual([
       expect.objectContaining({
         amount: '40.00',
         author: { id: DANI.sub, displayName: 'Usuario Eliminado', avatarUrl: null },
@@ -314,7 +329,9 @@ describe('GET /api/v1/budgets/:id/goals/:goalId/contributions', () => {
 
     const response = await listContributions(ANA, id, goal);
 
-    expect(response.json()).toEqual([expect.objectContaining({ amount: '5.00', author: null })]);
+    expect(response.json().items).toEqual([
+      expect.objectContaining({ amount: '5.00', author: null }),
+    ]);
   });
 
   it('una meta sin contribuciones devuelve una lista vacía', async () => {
@@ -324,7 +341,99 @@ describe('GET /api/v1/budgets/:id/goals/:goalId/contributions', () => {
     const response = await listContributions(ANA, id, goal);
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual([]);
+    expect(response.json()).toEqual({ items: [], nextCursor: null });
+  });
+
+  describe('paginación', () => {
+    it('pagina de 20 en 20 por defecto siguiendo nextCursor, más recientes primero', async () => {
+      const id = await familyBudget();
+      const goal = await seedGoal(id);
+      const ids: string[] = [];
+      for (let i = 0; i < 25; i++) {
+        const minute = String(i).padStart(2, '0');
+        ids.push(await seedContribution(goal, ANA, '1.00', `2026-10-01T10:${minute}:00.000Z`));
+      }
+
+      const first = await listContributions(ANA, id, goal);
+      const firstPage = first.json();
+      const second = await listContributions(ANA, id, goal, `cursor=${firstPage.nextCursor}`);
+
+      expect(firstPage.items.map((item: { id: string }) => item.id)).toEqual(
+        ids.slice(5).reverse(),
+      );
+      expect(firstPage.nextCursor).toEqual(expect.any(String));
+      expect(second.json()).toEqual({
+        items: ids
+          .slice(0, 5)
+          .reverse()
+          .map((itemId) => expect.objectContaining({ id: itemId })),
+        nextCursor: null,
+      });
+    });
+
+    it('con exactamente limit contribuciones no hay página siguiente', async () => {
+      const id = await familyBudget();
+      const goal = await seedGoal(id);
+      await seedContribution(goal, ANA, '1.00', '2026-10-01T10:00:00.000Z');
+      await seedContribution(goal, ANA, '2.00', '2026-10-02T10:00:00.000Z');
+
+      const response = await listContributions(ANA, id, goal, 'limit=2');
+
+      expect(response.json().items).toHaveLength(2);
+      expect(response.json().nextCursor).toBeNull();
+    });
+
+    it('las contribuciones con el mismo createdAt no se pierden ni se repiten entre páginas', async () => {
+      const id = await familyBudget();
+      const goal = await seedGoal(id);
+      const ids: string[] = [];
+      for (let i = 0; i < 5; i++) {
+        ids.push(await seedContribution(goal, ANA, '1.00', '2026-10-01T10:00:00.000Z'));
+      }
+
+      const pages = await allPages(ANA, id, goal, 2);
+
+      const seen = pages.flatMap((page) => page.items.map((item) => item.id));
+      expect(pages).toHaveLength(3);
+      expect(seen).toHaveLength(5);
+      expect(new Set(seen)).toEqual(new Set(ids));
+    });
+
+    it('una contribución nueva entre páginas no se cuela ni duplica', async () => {
+      const id = await familyBudget();
+      const goal = await seedGoal(id);
+      await seedContribution(goal, ANA, '1.00', '2026-10-01T10:00:00.000Z');
+      await seedContribution(goal, ANA, '2.00', '2026-10-02T10:00:00.000Z');
+      await seedContribution(goal, ANA, '3.00', '2026-10-03T10:00:00.000Z');
+
+      const first = (await listContributions(ANA, id, goal, 'limit=2')).json();
+      await contribute(BEA, id, goal, { amount: '9.00' });
+      const second = (
+        await listContributions(ANA, id, goal, `limit=2&cursor=${first.nextCursor}`)
+      ).json();
+
+      expect(first.items.map((item: { amount: string }) => item.amount)).toEqual(['3.00', '2.00']);
+      expect(second).toEqual({
+        items: [expect.objectContaining({ amount: '1.00' })],
+        nextCursor: null,
+      });
+    });
+
+    it.each([
+      ['limit 0', 'limit=0'],
+      ['limit mayor que 100', 'limit=101'],
+      ['cursor ilegible', 'cursor=no-es-un-cursor'],
+      ['cursor vacío', 'cursor='],
+      ['parámetro desconocido', 'order=asc'],
+    ])('rechaza con 400: %s', async (_case, query) => {
+      const id = await familyBudget();
+      const goal = await seedGoal(id);
+
+      const response = await listContributions(ANA, id, goal, query);
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+    });
   });
 
   it('una meta de otro presupuesto devuelve 404 "Meta no encontrada"', async () => {

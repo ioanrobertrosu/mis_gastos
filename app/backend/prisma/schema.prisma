@@ -185,7 +185,7 @@ model GoalContribution {
   goal Goal  @relation(fields: [goalId], references: [id], onDelete: Cascade)
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@index([goalId, createdAt(sort: Desc)])
+  @@index([goalId, createdAt(sort: Desc), id(sort: Desc)])
 }
 
 /// Catálogo cerrado de acciones del muro de actividad.
@@ -225,8 +225,10 @@ model ActivityLog {
   metadata  Json?
   createdAt DateTime       @default(now())
   // Orden estable: varias entradas de una misma transacción comparten `createdAt` (hora de
-  // inicio de la transacción), así que el muro se ordena y pagina por esta secuencia.
-  seq       Int            @unique @default(autoincrement())
+  // inicio de la transacción), así que el muro se ordena y pagina por esta secuencia. Sin índice
+  // propio: con uno global, el planificador lo prefiere al de (budgetId, seq) cuando un presupuesto
+  // acapara la tabla y recorre las entradas de todos los demás.
+  seq       Int            @default(autoincrement())
   // Solo en alertas: impide repetir la misma alerta (acción + categoría + mes).
   dedupeKey String?        @unique
 

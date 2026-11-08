@@ -2,7 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { testPrisma } from '../helpers/db.js';
+import { syncUser } from '../../src/modules/users/user-sync.js';
 import { signTestToken, TEST_AUTH, TEST_USER, type TestTokenOptions } from '../helpers/jwt.js';
+import { QueryCounter } from '../helpers/query-count.js';
 
 let app: FastifyInstance;
 
@@ -119,5 +121,20 @@ describe('sincronización del usuario al autenticarse', () => {
       error: { code: 'CONFLICT', message: expect.any(String) },
     });
     await expect(counts()).resolves.toEqual({ users: 1, identities: 0 });
+  });
+
+  // Se ejecuta en cada petición autenticada: cada consulta es un viaje de ida y vuelta a la BD.
+  it('con la identidad ya registrada, la comprobación es una sola consulta', async () => {
+    expect((await login()).statusCode).toBe(200);
+    const counter = new QueryCounter();
+
+    await syncUser(counter.prisma, {
+      sub: TEST_USER.sub,
+      email: TEST_USER.email,
+      provider: 'google',
+      providerId: TEST_USER.providerId,
+    });
+
+    expect(counter.queries).toHaveLength(1);
   });
 });

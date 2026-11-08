@@ -316,7 +316,11 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - [x] 🔴 Test: límite global (300/min por IP, `/health` exento), exportación (10/min), IP real tras proxy (`TRUST_PROXY`), body de 64 KB, WebSocket (5 conexiones por usuario, 20 mensajes/10 s, cierre 4429)
   - [x] 🟢 Límites implementados. `authenticate` pasa a `preParsing`: tras el límite de peticiones (los tokens inválidos también cuentan) y antes de leer el body.
   - **Nota:** sin cambios en secretos (ninguno en git; `.env` fuera de git y de la imagen), imagen sin root, Helmet, CORS cerrado y errores 500 sin detalles. `npm audit`: 0 en producción; 10 moderadas en desarrollo. Los contadores viven en memoria (una sola instancia). `TRUST_PROXY` hay que ajustarlo al desplegar.
-- [ ] Revisar consultas N+1 y planes `EXPLAIN` de los listados paginados
+- [x] Revisar consultas N+1 y planes `EXPLAIN` de los listados paginados
+  - **Nota:** medido con 500k transacciones, 160k entradas de actividad y 12k contribuciones. Sin N+1 (4–6 consultas por endpoint) y todos los planes por índice. El coste real son los viajes de ida y vuelta: ~28 ms por consulta (VM en Madrid, Supabase en Frankfurt).
+  - [x] 🔴 Test: la sincronización del usuario con identidad conocida es 1 consulta; el export hace 1 por lote de 1000 (categorías y miembros, una vez); las contribuciones se paginan (`{ items, nextCursor }`, 20 por defecto, `limit` ≤ 100, keyset `(createdAt, id)`)
+  - [x] 🟢 Una consulta menos en cada petición autenticada; export de un año de 207 a 38 consultas; contribuciones de 576 KB (3000) a 4 KB por página.
+  - [x] Migración `query_review_indexes`: fuera el índice único global de `ActivityLog.seq` (con un presupuesto dominante, el planificador lo prefería y recorría la tabla: 27 ms → 0,05 ms) y el índice de contribuciones incluye `id`. **Pendiente de `migrate deploy` en producción, con aprobación.**
 - [ ] Pipeline de CI (GitHub Actions): lint → typecheck → test → build de la imagen Docker
 - [x] Definir el destino de despliegue del contenedor en producción
   - **Decisión:** VM de Oracle (host SSH `ORACLE_VM`, usuario `ubuntu`, ARM64), en `/home/ubuntu/prod`. La imagen se construye en el servidor. API solo en `127.0.0.1:3000` hasta que haya un proxy inverso con TLS.
