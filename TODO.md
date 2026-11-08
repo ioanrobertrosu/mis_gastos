@@ -322,6 +322,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Decisión:** VM de Oracle (host SSH `ORACLE_VM`, usuario `ubuntu`, ARM64), en `/home/ubuntu/prod`. La imagen se construye en el servidor. API solo en `127.0.0.1:3000` hasta que haya un proxy inverso con TLS.
 - [x] Exponer la API con un proxy inverso y TLS (requiere dominio) y ajustar `TRUST_PROXY`
   - **Nota:** `https://mis-gastos.duckdns.org` (DuckDNS). Caddy (`Caddyfile`, servicio `caddy` en `docker-compose.yml`) con certificado de Let's Encrypt y redirección HTTP→HTTPS; WebSocket incluido. `TRUST_PROXY=1` en el servidor (el límite ve la IP real). Puertos 80/443 abiertos en la security list de Oracle; el 3000 sigue solo en local.
+- [x] Separar la BD de desarrollo de la de producción
+  - **Nota:** Postgres 17 local y persistente (servicio `postgres` en `docker-compose.override.yml`, `127.0.0.1:54328`, volumen `dev_db_data`; `npm run dev:db:up` / `dev:db:down`). El `.env` local apunta a ella y la API en Docker de desarrollo la fuerza por entorno. Las URLs de producción viven en `app/backend/.env.production.local` (fuera de git), solo para `prisma migrate deploy` con aprobación.
 
 ---
 

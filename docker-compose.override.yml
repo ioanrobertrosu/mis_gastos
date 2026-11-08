@@ -5,10 +5,41 @@ services:
     image: mis_gastos-api:dev
     environment:
       NODE_ENV: development
+      # En desarrollo, siempre la BD local: nunca la de producción aunque el .env la tenga.
+      DATABASE_URL: postgresql://mis_gastos:mis_gastos@postgres:5432/mis_gastos_dev
+      DIRECT_URL: postgresql://mis_gastos:mis_gastos@postgres:5432/mis_gastos_dev
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./app/backend/src:/app/src
     command: npm run dev
 
+  # BD de desarrollo: local y persistente (a diferencia de la de test, que se vacía en cada test).
+  # Desde el host (npm run dev, prisma migrate dev): 127.0.0.1:54328. Arranque: npm run dev:db:up.
+  postgres:
+    image: postgres:17
+    container_name: mis_gastos_dev_db
+    environment:
+      # Credenciales solo locales: el puerto no sale de 127.0.0.1.
+      POSTGRES_USER: mis_gastos
+      POSTGRES_PASSWORD: mis_gastos
+      POSTGRES_DB: mis_gastos_dev
+    ports:
+      - '127.0.0.1:54328:5432'
+    volumes:
+      - dev_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mis_gastos -d mis_gastos_dev']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks:
+      - internal_network
+
   # En local no hay dominio ni certificado: el proxy solo se usa en producción.
   caddy:
     profiles: [production-only]
+
+volumes:
+  dev_db_data:
