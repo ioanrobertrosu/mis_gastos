@@ -1,5 +1,6 @@
 import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { type ErrorReporter, NOOP_ERROR_REPORTER } from './config/error-reporter.js';
 import { genReqId, REQUEST_ID_HEADER } from './config/request-id.js';
 import { schemaController } from './config/validation.js';
 import type { PrismaClient } from './generated/prisma/client.js';
@@ -35,6 +36,8 @@ export interface BuildAppOptions extends FastifyServerOptions {
   rateLimitMax?: number;
   /** Número de proxies de confianza delante del backend. Por defecto 0. */
   trustedProxies?: number;
+  /** Notificación de errores inesperados (Sentry). Por defecto no hace nada (tests). */
+  errorReporter?: ErrorReporter;
   /** Documentación OpenAPI en `/docs`. Por defecto `false`: nunca en producción. */
   docs?: boolean;
 }
@@ -49,6 +52,7 @@ export async function buildApp({
   rateLimitMax = 300,
   trustedProxies = 0,
   docs = false,
+  errorReporter = NOOP_ERROR_REPORTER,
   ...options
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
@@ -66,7 +70,7 @@ export async function buildApp({
   });
   app.decorate('authAdmin', authAdmin);
 
-  await app.register(errorHandlerPlugin, { exposeInternalErrors });
+  await app.register(errorHandlerPlugin, { exposeInternalErrors, errorReporter });
   await app.register(securityPlugin, { corsOrigins, rateLimitMax });
   await app.register(prismaPlugin, { client: prisma });
   // Antes de cualquier ruta: un `preHandler: app.authenticate` indefinido dejaría la ruta pública.

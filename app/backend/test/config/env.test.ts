@@ -133,4 +133,25 @@ describe('loadEnv', () => {
       ).toThrow(expect.objectContaining({ message: expect.not.stringContaining('sb_secret_x') }));
     });
   });
+
+  describe('Sentry', () => {
+    it('SENTRY_DSN es opcional: sin ella (o vacía) no hay DSN', () => {
+      expect(loadEnv(REQUIRED).SENTRY_DSN).toBeUndefined();
+      expect(loadEnv({ ...REQUIRED, SENTRY_DSN: '' }).SENTRY_DSN).toBeUndefined();
+    });
+
+    it('acepta un DSN https y lo conserva', () => {
+      const dsn = 'https://abc123@o42.ingest.de.sentry.io/7';
+      expect(loadEnv({ ...REQUIRED, SENTRY_DSN: dsn }).SENTRY_DSN).toBe(dsn);
+    });
+
+    it('rechaza un SENTRY_DSN que no es una URL http(s)', () => {
+      expect(() => loadEnv({ ...REQUIRED, SENTRY_DSN: 'no-es-un-dsn' })).toThrow(/SENTRY_DSN/);
+    });
+
+    it('SENTRY_RELEASE es opcional y se conserva si se define', () => {
+      expect(loadEnv(REQUIRED).SENTRY_RELEASE).toBeUndefined();
+      expect(loadEnv({ ...REQUIRED, SENTRY_RELEASE: 'c424682' }).SENTRY_RELEASE).toBe('c424682');
+    });
+  });
 });

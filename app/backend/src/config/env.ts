@@ -27,6 +27,10 @@ const EnvSchema = Type.Object({
   // el límite de peticiones; demasiados, un cliente puede falsificar su IP.
   // Como texto: la conversión de TypeBox aceptaría `true` como 1 y confiaría en un proxy sin querer.
   TRUST_PROXY: Type.String({ pattern: '^[0-9]+$', default: '0' }),
+  // Notificación de errores. Sin DSN, Sentry no se inicializa.
+  SENTRY_DSN: Type.Optional(Type.String({ format: 'http-url' })),
+  // Versión desplegada (p. ej. el commit); por defecto, la de package.json.
+  SENTRY_RELEASE: Type.Optional(Type.String({ minLength: 1 })),
 });
 
 export type Env = Omit<Static<typeof EnvSchema>, 'CORS_ORIGINS' | 'TRUST_PROXY'> & {
@@ -45,11 +49,13 @@ export class EnvValidationError extends Error {
   override name = 'EnvValidationError';
 }
 
+// Opcionales sin valor por defecto: `SENTRY_DSN=` en el .env equivale a no definirla.
+const OPTIONAL = ['SENTRY_DSN', 'SENTRY_RELEASE'] as const;
+
 export function loadEnv(source: Record<string, string | undefined> = process.env): Env {
-  const env = Value.Convert(
-    EnvSchema,
-    Value.Default(EnvSchema, Value.Clean(EnvSchema, { ...source })),
-  );
+  const input = { ...source };
+  for (const key of OPTIONAL) if (input[key] === '') delete input[key];
+  const env = Value.Convert(EnvSchema, Value.Default(EnvSchema, Value.Clean(EnvSchema, input)));
 
   if (Value.Check(EnvSchema, env)) {
     return {

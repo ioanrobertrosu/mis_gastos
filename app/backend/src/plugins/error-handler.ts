@@ -1,10 +1,14 @@
 import type { FastifyError } from 'fastify';
 import fp from 'fastify-plugin';
+import type { ErrorReporter } from '../config/error-reporter.js';
 import { DomainError } from '../shared/errors.js';
+import type { AuthUser } from './auth.js';
 
 export interface ErrorHandlerOptions {
   /** Muestra el mensaje original de los errores 500 (solo fuera de producción). */
   exposeInternalErrors: boolean;
+  /** Recibe solo los errores inesperados (500), no los 4xx. */
+  errorReporter: ErrorReporter;
 }
 
 function errorBody(code: string, message: string) {
@@ -12,7 +16,7 @@ function errorBody(code: string, message: string) {
 }
 
 export const errorHandlerPlugin = fp<ErrorHandlerOptions>(
-  async (app, { exposeInternalErrors }) => {
+  async (app, { exposeInternalErrors, errorReporter }) => {
     app.setNotFoundHandler((request, reply) => {
       reply
         .code(404)
@@ -35,6 +39,18 @@ export const errorHandlerPlugin = fp<ErrorHandlerOptions>(
       }
 
       request.log.error({ err: error }, 'Error no controlado');
+      try {
+        errorReporter.captureException(error, {
+          requestId: request.id,
+          method: request.method,
+          route: request.routeOptions.url,
+          // `null` sin autenticar (el decorador lo inicializa así), aunque el tipo no lo refleje.
+          userId: (request.user as AuthUser | null)?.sub,
+        });
+      } catch (reportError) {
+        // Notificar nunca debe cambiar la respuesta al cliente.
+        request.log.error({ err: reportError }, 'No se pudo notificar el error');
+      }
       const message = exposeInternalErrors ? error.message : 'Error interno del servidor';
       return reply.code(500).send(errorBody('INTERNAL_ERROR', message));
     });
