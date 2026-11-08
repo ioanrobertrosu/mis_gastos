@@ -302,11 +302,11 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 
 ## Fase 8 — Observabilidad y endurecimiento del backend
 
-- [ ] Integrar Sentry en el backend (`@sentry/node`) con release y entorno
+- [x] Integrar Sentry en el backend (`@sentry/node`) con release y entorno
   - [x] 🔴 Test: solo se notifican los 500 (no 4xx, validación, JSON mal formado, 404 ni 401), con `requestId`, método y ruta como etiquetas y el usuario por id; un fallo al notificar no cambia la respuesta; sin `SENTRY_DSN` no se inicializa; `beforeSend` quita credenciales, cookies y query
   - [x] 🟢 `src/config/error-reporter.ts` (inyectable en `buildApp`, como `authAdmin`), `SENTRY_DSN`/`SENTRY_RELEASE` opcionales; `server.ts` vacía los eventos al cerrar.
   - **Nota:** Sentry 11 sustituye `sendDefaultPii` por `dataCollection`, cuyos valores por defecto lo recogen todo: se desactivan cookies, query, cuerpos, usuario automático y cabeceras con credenciales. Se quitan las integraciones `Fastify` (capturaba por su cuenta sin etiquetas y la deduplicación descartaba la nuestra) y `LocalVariables*`. Comprobado con el SDK real contra un ingest local: un evento con etiquetas y usuario, sin token, cookie ni query.
-  - [ ] Activarlo en producción: `SENTRY_DSN` en el `.env` del servidor (requiere crear el proyecto en Sentry)
+  - [x] Activado en producción: `SENTRY_DSN` en el `.env` del servidor (región UE de Sentry). Evento de prueba enviado desde el contenedor (`production`) y desde desarrollo (`development`).
 - [x] Migrar la verificación de JWT de HS256 a claves asimétricas vía JWKS
   - [x] 🟢 `jwks` en `AuthOptions`; en `server.ts`, `createRemoteJWKSet({JWT_ISSUER}/.well-known/jwks.json)`. La clave se elige por algoritmo (HS256 → secreto; ES256/RS256 → JWKS). Comprobado: el JWKS del proyecto publica la clave ES256 en standby.
   - [x] 🔴 Test: se aceptan tokens ES256/RS256 de claves publicadas en el JWKS y siguen valiendo los HS256 heredados; se rechazan claves/kid desconocidas, issuer/audience incorrectos y la confusión de algoritmo; un fallo del JWKS da 401
