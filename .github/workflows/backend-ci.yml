@@ -1,0 +1,79 @@
+# CI del backend: lint → typecheck → tests con cobertura → migraciones al día → imagen Docker.
+# No usa secretos: la BD de los tests es el Postgres efímero de docker-compose.test.yml.
+name: Backend CI
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'app/backend/**'
+      - 'docker-compose.test.yml'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    paths:
+      - 'app/backend/**'
+      - 'docker-compose.test.yml'
+      - '.github/workflows/backend-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: app/backend
+
+jobs:
+  check:
+    name: Lint, tipos, tests y migraciones
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/backend/package-lock.json
+
+      # `postinstall` genera el cliente de Prisma (no necesita BD).
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Formato
+        run: npx prettier --check .
+
+      - name: Tipos
+        run: npm run typecheck
+
+      # El globalSetup arranca la BD de test en Docker y aplica las migraciones.
+      - name: Tests con cobertura (umbral 95/90/95/95)
+        run: npm run test:coverage
+
+      # Falla si schema.prisma tiene cambios sin migración (la BD de test ya tiene todas aplicadas).
+      - name: Migraciones al día con el esquema
+        env:
+          DIRECT_URL: postgresql://mis_gastos:mis_gastos@127.0.0.1:54329/mis_gastos_test
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
+      - name: Parar la BD de test
+        if: always()
+        run: npm run test:db:down
+
+  image:
+    name: Imagen Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: check
+    steps:
+      - uses: actions/checkout@v5
+
+      # Solo comprueba que la imagen de producción se construye; no se publica en ningún registro.
+      - name: Build de la imagen de producción
+        run: docker build --target runtime --tag mis_gastos-api:ci .

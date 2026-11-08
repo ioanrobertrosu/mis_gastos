@@ -325,6 +325,8 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - [x] 🟢 Una consulta menos en cada petición autenticada; export de un año de 207 a 38 consultas; contribuciones de 576 KB (3000) a 4 KB por página.
   - [x] Migración `query_review_indexes`: fuera el índice único global de `ActivityLog.seq` (con un presupuesto dominante, el planificador lo prefería y recorría la tabla: 27 ms → 0,05 ms) y el índice de contribuciones incluye `id`. **Pendiente de `migrate deploy` en producción, con aprobación.**
 - [ ] Pipeline de CI (GitHub Actions): lint → typecheck → test → build de la imagen Docker
+  - [x] `.github/workflows/backend-ci.yml`: lint, formato, tipos, `test:coverage` (con el umbral), migraciones al día con el esquema (`prisma migrate diff --exit-code`) y build de la imagen `runtime`. Sin secretos: Postgres efímero de `docker-compose.test.yml`. Pasos comprobados en local (incluido que el paso de migraciones falla con un cambio de esquema sin migración).
+  - [ ] Primera ejecución en GitHub (requiere `git push`)
 - [x] Definir el destino de despliegue del contenedor en producción
   - **Decisión:** VM de Oracle (host SSH `ORACLE_VM`, usuario `ubuntu`, ARM64), en `/home/ubuntu/prod`. La imagen se construye en el servidor. API solo en `127.0.0.1:3000` hasta que haya un proxy inverso con TLS.
 - [x] Exponer la API con un proxy inverso y TLS (requiere dominio) y ajustar `TRUST_PROXY`
