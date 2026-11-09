@@ -1,3 +1,6 @@
+/** Divisas que admite el backend (enum `Currency` de Prisma). */
+export type Currency = 'EUR' | 'USD' | 'JPY' | 'CNY' | 'INR' | 'GBP';
+
 // Formato de los importes de la API: decimal positivo con hasta dos decimales ("12.50").
 const API_AMOUNT = /^\d+(?:\.\d{1,2})?$/;
 

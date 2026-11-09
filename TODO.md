@@ -377,7 +377,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - [x] 🔴 Test: sin nada guardado es `system`; guardar `dark`/`light`/`system` lo persiste y lo aplica (`Appearance.setColorScheme`, `unspecified` para `system`); un valor desconocido o un fallo del almacenamiento dan `system`; al arrancar se aplica la preferencia guardada; en web (sin `setColorScheme`) no rompe
   - [x] 🟢 `src/theme/theme-preference.ts`; el layout raíz aplica la preferencia al arrancar.
   - **Decisión:** se guarda en AsyncStorage (una preferencia de UI, no datos relacionales). En NativeWind v5, `dark:` es `prefers-color-scheme`: en iOS/Android la preferencia lo fuerza; en web la app sigue siempre al navegador (react-native-web no implementa `Appearance.setColorScheme`; sin la comprobación, la app fallaba al arrancar en web).
-- [ ] Componentes base: `Screen` (con `SafeAreaView`), `Button`, `Text`, `Card`, `MoneyInput` (`keyboardType="decimal-pad"`), `Amount` (con soporte de blur)
+- [x] Componentes base: `Screen` (con `SafeAreaView`), `Button`, `Text`, `Card`, `MoneyInput` (`keyboardType="decimal-pad"`), `Amount` (con soporte de blur)
+  - [x] 🔴 Test: `Text` (`title` es encabezado, tono semántico), `Screen` (dentro de `SafeAreaView`), `Button` (accesible; deshabilitado se anuncia y no responde), `Card`, `MoneyInput` (teclado `decimal-pad`; muestra coma y emite punto; rechaza letras, tercer decimal, dos separadores, signo y más de 10 cifras enteras; admite estados intermedios), `Amount` (`Intl` es-ES con la divisa del presupuesto; `hidden` muestra `••••`, se anuncia «Importe oculto» y la cifra no está en el árbol)
+  - [x] 🟢 `src/components/`, con `dark:` en cada color y solo la paleta del PRD.
+  - **Nota:** `SafeAreaView` es de un paquete externo: NativeWind v5 solo traduce `className` en los componentes de React Native, así que se envuelve con `styled`. RNTL 14 eliminó `UNSAFE_getByType`: el test de `Screen` comprueba el elemento nativo `RNCSafeAreaView`. Importes formateados en `es-ES` en todas las divisas (seguir el idioma del dispositivo requeriría `expo-localization`).
 - [ ] Iconos con `lucide-react-native`
 - [ ] Wrapper de haptics (`expo-haptics`)
 
