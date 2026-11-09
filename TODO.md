@@ -369,7 +369,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] Instalar y configurar NativeWind + Tailwind v4
   - **Decisión (usuario, 2026-11-09):** NativeWind `5.0.0-rc.1` + `react-native-css 3.1.0-rc.1` (versiones exactas), Tailwind `4.1.12` y `lightningcss 1.30.1` fijado con `overrides`, según la guía de v5. v5 aún es release candidate («not intended for production»); se asume porque la app no se distribuye hasta la Fase 11 y evita migrar de v4 (Tailwind 3) más adelante. Revisar si hay versión estable antes de la Fase 11.
   - **Nota:** comprobado en web (la clase llega al HTML y el CSS la define); en iOS/Android queda por probar en una development build. Jest no pasa por Metro: el CSS se sustituye por un stub y los tests prueban comportamiento y accesibilidad, no estilos.
-- [ ] Definir tokens: escala de grises, esmeralda, ámbar y carmesí; espaciado, radios y tipografía
+- [x] Definir tokens: escala de grises, esmeralda, ámbar y carmesí; espaciado, radios y tipografía
+  - [x] 🔴 Test: `toCents` (importes de la API a céntimos exactos, `bigint`); `spendingTone` con las reglas de las alertas del backend (excedido si gasto > límite, aviso desde el 90 %, en céntimos: 89,99 % es neutro aunque `percentUsed` diga 90,0); `TONE_CLASSES` con variante `dark:` en cada clase y solo la paleta del PRD
+  - [x] 🟢 `src/utils/money.ts` y `src/theme/tone.ts`.
+  - **Decisión:** grises `zinc`; esmeralda solo para metas cumplidas e ingresos (una categoría por debajo del 90 % es neutra); ámbar para avisos; rojo de Tailwind como «carmesí». Las clases por tono se escriben enteras (Tailwind solo genera las que encuentra literalmente). Espaciado, radios y tipografía: la escala por defecto de Tailwind y fuentes del sistema; las convenciones concretas se fijan en los componentes base.
 - [ ] Modo oscuro con `dark:` y preferencia System / Dark / Light (persistida solo como preferencia de UI)
 - [ ] Componentes base: `Screen` (con `SafeAreaView`), `Button`, `Text`, `Card`, `MoneyInput` (`keyboardType="decimal-pad"`), `Amount` (con soporte de blur)
 - [ ] Iconos con `lucide-react-native`
