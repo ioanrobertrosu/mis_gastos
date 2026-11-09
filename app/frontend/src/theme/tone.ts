@@ -29,3 +29,12 @@ export const TONE_CLASSES = {
   warning: { text: 'text-amber-700 dark:text-amber-400', bar: 'bg-amber-500 dark:bg-amber-400' },
   danger: { text: 'text-red-700 dark:text-red-400', bar: 'bg-red-600 dark:bg-red-500' },
 } as const satisfies Record<Tone, { text: string; bar: string }>;
+
+/**
+ * Los mismos colores que `TONE_CLASSES[tono].text`, en hexadecimal, para lo que no admite clases
+ * (iconos de Lucide). Si cambia una clase de texto, cambia también su color aquí.
+ */
+export const TONE_COLORS = {
+  light: { neutral: '#18181b', success: '#047857', warning: '#b45309', danger: '#b91c1c' },
+  dark: { neutral: '#f4f4f5', success: '#34d399', warning: '#fbbf24', danger: '#f87171' },
+} as const satisfies Record<'light' | 'dark', Record<Tone, string>>;

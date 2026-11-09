@@ -381,8 +381,13 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - [x] 🔴 Test: `Text` (`title` es encabezado, tono semántico), `Screen` (dentro de `SafeAreaView`), `Button` (accesible; deshabilitado se anuncia y no responde), `Card`, `MoneyInput` (teclado `decimal-pad`; muestra coma y emite punto; rechaza letras, tercer decimal, dos separadores, signo y más de 10 cifras enteras; admite estados intermedios), `Amount` (`Intl` es-ES con la divisa del presupuesto; `hidden` muestra `••••`, se anuncia «Importe oculto» y la cifra no está en el árbol)
   - [x] 🟢 `src/components/`, con `dark:` en cada color y solo la paleta del PRD.
   - **Nota:** `SafeAreaView` es de un paquete externo: NativeWind v5 solo traduce `className` en los componentes de React Native, así que se envuelve con `styled`. RNTL 14 eliminó `UNSAFE_getByType`: el test de `Screen` comprueba el elemento nativo `RNCSafeAreaView`. Importes formateados en `es-ES` en todas las divisas (seguir el idioma del dispositivo requeriría `expo-localization`).
-- [ ] Iconos con `lucide-react-native`
-- [ ] Wrapper de haptics (`expo-haptics`)
+- [x] Iconos con `lucide-react-native`
+  - [x] 🔴 Test: `Icon` sin etiqueta es decorativo (oculto a lectores de pantalla); con etiqueta, imagen accesible con ese nombre; 20 por defecto; color del tono en claro y en oscuro
+  - [x] 🟢 `src/components/icon.tsx` y `TONE_COLORS` (hex) en `src/theme/tone.ts`.
+  - **Nota:** Lucide recibe `color`, no clases: `TONE_COLORS` replica en hex los colores de texto de cada tono (cambiarlos juntos). Lucide solo reconoce `aria-*`/`role`/`title` para no marcarse `aria-hidden`, así que la etiqueta va en `role="img"` + `aria-label`. En Jest se usa su build CommonJS (la de React Native es `.mjs`).
+- [x] Wrapper de haptics (`expo-haptics`)
+  - [x] 🔴 Test: `success`/`warning`/`error` con la notificación nativa correspondiente y `selection` con el pulso de selección; sin vibración (dispositivo, web o módulo nativo roto) no lanza ni deja promesas sin capturar
+  - [x] 🟢 `src/utils/haptics.ts`.
 
 ### 9.3 Datos y estado
 - [ ] Cliente HTTP tipado que inyecta el JWT de Supabase
