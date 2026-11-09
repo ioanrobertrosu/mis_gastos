@@ -1,0 +1,6 @@
+/* Capas por separado: con un único `@import "tailwindcss"`, las utilidades quedarían por debajo
+   de los estilos por defecto de React Native Web (guía de instalación de NativeWind v5). */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css';
+@import 'nativewind/theme';

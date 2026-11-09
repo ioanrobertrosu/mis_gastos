@@ -54,7 +54,7 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] ❓ Estructura de repo: carpetas independientes (`app/backend`, `app/frontend`) o monorepo con workspaces y paquete compartido de tipos
   - **Decisión:** carpetas independientes `app/backend` y `app/frontend` (sin workspaces); el backend se despliega dockerizado en un servidor propio. Expo Router crea su propia carpeta de rutas, por lo que quedará `app/frontend/app/`.
 - [x] ❓ Versión de NativeWind compatible con Tailwind v4 y con el SDK de Expo elegido
-  - **Decisión:** usar la versión de NativeWind compatible con Tailwind v4 (v5). Verificar su estabilidad y el SDK de Expo compatible al iniciar la Fase 9.
+  - **Decisión:** usar la versión de NativeWind compatible con Tailwind v4 (v5). Verificar su estabilidad y el SDK de Expo compatible al iniciar la Fase 9. → Verificado: v5 sigue en RC; se usa igualmente (ver 9.2).
 - [x] Reflejar la decisión de testing del frontend en la tabla de stack del [PRD.md](PRD.md) (fila *Testing*)
 
 ### 0.5 Correcciones al esquema del PRD
@@ -366,7 +366,9 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Nota:** `jest-expo` 58 (Jest 30) + `@testing-library/react-native` 14, según la guía del SDK 58 (en ella `renderRouter` y `testRouter` son asíncronos). `npm audit`: 5 moderadas en las herramientas de la CLI de Expo (`glob`/`minimatch`), que no van en la app.
 
 ### 9.2 Design system
-- [ ] Instalar y configurar NativeWind + Tailwind v4
+- [x] Instalar y configurar NativeWind + Tailwind v4
+  - **Decisión (usuario, 2026-11-09):** NativeWind `5.0.0-rc.1` + `react-native-css 3.1.0-rc.1` (versiones exactas), Tailwind `4.1.12` y `lightningcss 1.30.1` fijado con `overrides`, según la guía de v5. v5 aún es release candidate («not intended for production»); se asume porque la app no se distribuye hasta la Fase 11 y evita migrar de v4 (Tailwind 3) más adelante. Revisar si hay versión estable antes de la Fase 11.
+  - **Nota:** comprobado en web (la clase llega al HTML y el CSS la define); en iOS/Android queda por probar en una development build. Jest no pasa por Metro: el CSS se sustituye por un stub y los tests prueban comportamiento y accesibilidad, no estilos.
 - [ ] Definir tokens: escala de grises, esmeralda, ámbar y carmesí; espaciado, radios y tipografía
 - [ ] Modo oscuro con `dark:` y preferencia System / Dark / Light (persistida solo como preferencia de UI)
 - [ ] Componentes base: `Screen` (con `SafeAreaView`), `Button`, `Text`, `Card`, `MoneyInput` (`keyboardType="decimal-pad"`), `Amount` (con soporte de blur)
