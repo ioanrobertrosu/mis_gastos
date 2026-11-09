@@ -9,7 +9,7 @@ App multiplataforma (iOS, Android y web) para planificar los gastos del mes, sol
 | Parte | Estado |
 | ----- | ------ |
 | Backend (API REST + WebSocket) | Funcional y desplegado (fases 1–8 de [TODO.md](TODO.md)) |
-| Frontend (Expo) | Pendiente: bloqueado hasta cerrar el backend ([ONBOARDING.md](ONBOARDING.md)) |
+| Frontend (Expo) | En desarrollo: cimientos (Fase 9 de [TODO.md](TODO.md)) |
 
 ## Stack
 
@@ -17,15 +17,16 @@ App multiplataforma (iOS, Android y web) para planificar los gastos del mes, sol
 - **Auth:** Supabase Auth; la API verifica los JWT (JWKS y secreto heredado).
 - **Tests:** Vitest con TDD estricto; los de integración usan un Postgres efímero en Docker.
 - **Operación:** Docker Compose, Caddy (TLS automático), Sentry para errores y CI en GitHub Actions.
-- **Frontend (previsto):** React Native con Expo Router, NativeWind, TanStack Query y Zustand. Sin persistencia relacional en el cliente.
+- **Frontend:** Expo SDK 58 con Expo Router; tests con `jest-expo` y React Native Testing Library. Previstos: NativeWind, TanStack Query y Zustand. Sin persistencia relacional en el cliente.
 
 ## Estructura
 
 ```
 app/backend/      API: código (src/), tests (test/), esquema y migraciones de Prisma (prisma/)
+app/frontend/     App Expo: rutas en src/app/, el resto del código en src/ (tests junto al código)
 rules/            Reglas de desarrollo (TDD, UI, estado, backend)
 docker-compose*.yml   Producción, desarrollo (override) y BD de test
-.github/workflows/    CI del backend
+.github/workflows/    CI del backend y de la app
 ```
 
 ## Desarrollo local
@@ -43,9 +44,19 @@ npm run dev               # http://localhost:3000, documentación en /docs
 
 La base de datos de desarrollo es local: nunca la de producción.
 
-### Tests
+### App (Expo)
 
 ```bash
+cd app/frontend
+npm ci
+npm start                 # Expo: abre en web, Android o iOS
+npm test                  # jest-expo
+```
+
+### Tests del backend
+
+```bash
+cd app/backend
 npm test                  # unitarios + integración (arranca solo la BD de test)
 npm run test:coverage     # con el umbral de cobertura que exige el CI
 npm run lint && npm run typecheck

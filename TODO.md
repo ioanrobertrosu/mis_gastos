@@ -351,13 +351,19 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 
 ## Fase 9 — Cimientos del frontend (Expo)
 
-> Bloqueada por ONBOARDING hasta nuevo aviso. Requiere cerrar las decisiones ❓ de la Fase 0.
+> Desbloqueada el 2026-11-09 (backend completo y en producción). Decisiones ❓ de la Fase 0 cerradas.
 
 ### 9.1 Proyecto
-- [ ] Crear la app Expo con Expo Router (`app/frontend`, slug `mis_gastos`, nombre visible "Mis Gastos")
-- [ ] Configurar TypeScript estricto, ESLint y alias de imports
-- [ ] Definir la estructura de carpetas (skill `expo-project-structure`)
-- [ ] Configurar el runner de tests elegido + RNTL
+- [x] Crear la app Expo con Expo Router (`app/frontend`, slug `mis_gastos`, nombre visible "Mis Gastos")
+  - **Nota:** SDK 58 (`create-expo-app` 5.0.0, plantilla `default` sin su código de ejemplo). Esquema de URL `misgastos` (los esquemas no admiten `_`). Web en salida `static`: no hay código de servidor en la app. Se quitó el `.claude/settings.json` de la plantilla (activaba un plugin de Claude Code).
+- [x] Configurar TypeScript estricto, ESLint y alias de imports
+  - **Nota:** `strict`, alias `@/` → `src/` (también en Jest), ESLint `eslint-config-expo` + Prettier con la misma configuración que el backend.
+- [x] Definir la estructura de carpetas (skill `expo-project-structure`)
+  - **Decisión:** `src/app/` solo rutas; `src/components/`, `src/screens/`, `src/hooks/`, `src/utils/` al lado. Tests junto al código (`*.test.tsx`), nunca dentro de `src/app/`.
+- [x] Configurar el runner de tests elegido + RNTL
+  - [x] 🔴 Test: la app abre en `/` con "Mis Gastos" como encabezado (`renderRouter` con las rutas reales)
+  - [x] 🟢 Pantalla inicial mínima con `accessibilityRole="header"`.
+  - **Nota:** `jest-expo` 58 (Jest 30) + `@testing-library/react-native` 14, según la guía del SDK 58 (en ella `renderRouter` y `testRouter` son asíncronos). `npm audit`: 5 moderadas en las herramientas de la CLI de Expo (`glob`/`minimatch`), que no van en la app.
 
 ### 9.2 Design system
 - [ ] Instalar y configurar NativeWind + Tailwind v4

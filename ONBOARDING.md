@@ -17,9 +17,11 @@ Tu fuente de la verdad absoluta para este proyecto es el archivo `PRD.md`. Debes
 - **NUNCA** generes código de producción sin antes haber escrito la suite de pruebas unitarias o de integración que falle de forma predecible (Fase Roja). 
 - Utiliza **Vitest** como motor de pruebas.
 
-### 3. Enfoque Exclusivo en la Fase 1 (Backend Base)
-- Ignora por completo las fases 2, 3, 4 y 5 del PRD hasta nuevo aviso. No menciones ni generes nada relacionado con React Native, Expo, WebSockets o UI.
-- Tu ÚNICO OBJETIVO en esta sesión es establecer los cimientos del backend.
+### 3. Enfoque Actual: Fase 9 (Cimientos del Frontend)
+- El backend está completo y en producción (fases 0–8 de `TODO.md`). Desbloqueado el frontend el 2026-11-09 a petición del usuario.
+- El objetivo es la app Expo en `app/frontend`, en el orden de la Fase 9 de `TODO.md`, con el mismo TDD estricto (`jest-expo` + React Native Testing Library).
+- Expo cambia en cada SDK: antes de usar una API de Expo, consulta la documentación de la versión instalada (SDK 58) y las skills del proyecto. Instala paquetes con `npx expo install`.
+- El cliente sigue sin persistencia relacional local (punto 1) y solo consume la API del backend.
 
 ---
 
