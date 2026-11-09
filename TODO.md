@@ -373,7 +373,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - [x] 🔴 Test: `toCents` (importes de la API a céntimos exactos, `bigint`); `spendingTone` con las reglas de las alertas del backend (excedido si gasto > límite, aviso desde el 90 %, en céntimos: 89,99 % es neutro aunque `percentUsed` diga 90,0); `TONE_CLASSES` con variante `dark:` en cada clase y solo la paleta del PRD
   - [x] 🟢 `src/utils/money.ts` y `src/theme/tone.ts`.
   - **Decisión:** grises `zinc`; esmeralda solo para metas cumplidas e ingresos (una categoría por debajo del 90 % es neutra); ámbar para avisos; rojo de Tailwind como «carmesí». Las clases por tono se escriben enteras (Tailwind solo genera las que encuentra literalmente). Espaciado, radios y tipografía: la escala por defecto de Tailwind y fuentes del sistema; las convenciones concretas se fijan en los componentes base.
-- [ ] Modo oscuro con `dark:` y preferencia System / Dark / Light (persistida solo como preferencia de UI)
+- [x] Modo oscuro con `dark:` y preferencia System / Dark / Light (persistida solo como preferencia de UI)
+  - [x] 🔴 Test: sin nada guardado es `system`; guardar `dark`/`light`/`system` lo persiste y lo aplica (`Appearance.setColorScheme`, `unspecified` para `system`); un valor desconocido o un fallo del almacenamiento dan `system`; al arrancar se aplica la preferencia guardada; en web (sin `setColorScheme`) no rompe
+  - [x] 🟢 `src/theme/theme-preference.ts`; el layout raíz aplica la preferencia al arrancar.
+  - **Decisión:** se guarda en AsyncStorage (una preferencia de UI, no datos relacionales). En NativeWind v5, `dark:` es `prefers-color-scheme`: en iOS/Android la preferencia lo fuerza; en web la app sigue siempre al navegador (react-native-web no implementa `Appearance.setColorScheme`; sin la comprobación, la app fallaba al arrancar en web).
 - [ ] Componentes base: `Screen` (con `SafeAreaView`), `Button`, `Text`, `Card`, `MoneyInput` (`keyboardType="decimal-pad"`), `Amount` (con soporte de blur)
 - [ ] Iconos con `lucide-react-native`
 - [ ] Wrapper de haptics (`expo-haptics`)
