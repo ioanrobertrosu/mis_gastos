@@ -20,7 +20,7 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 - [x] Corregir `.gitignore`: sustituir `.*` por entradas explícitas (`.env`, `.env.*.local`, `oauth/`, `node_modules/`, `dist/`, `coverage/`, `.expo/`) para no ignorar `.env.example`, `.agents/`, `.claude/`, `.github/`, `.dockerignore`
 - [x] Verificar que `.env` y `oauth/*.plist` siguen fuera del control de versiones tras el cambio
 - [x] Versionar `.env.example`, `.agents/skills/` y `.claude/skills/` (si procede)
-  - **Decisión:** `app/backend/.env.example` ya está versionado. Las skills no: son de terceros y se reinstalan desde `skills-lock.json` (versionado, con origen y hash); `.claude/skills/` son enlaces simbólicos con rutas absolutas de esta máquina. Ahora mismo las carpetas de `.agents/skills/` están vacías (sin ningún fichero): hay que reinstalarlas para poder usarlas.
+  - **Decisión:** `app/backend/.env.example` ya está versionado. Las skills no: son de terceros y se reinstalan desde `skills-lock.json` (versionado, con origen y hash); `.claude/skills/` son enlaces simbólicos con rutas absolutas de esta máquina. Ignoradas en `.gitignore`. Reinstaladas el 2026-11-09 desde los repositorios de origen (estaban vacías); sus hashes no coinciden con los del lock (el contenido pudo cambiar desde octubre), revisadas antes de instalarlas: solo `.md`/`.yaml`/`.json`, sin scripts.
 - [x] Corregir enlaces rotos de [rules/index.md](rules/index.md) (`rules/rules/...` → rutas relativas)
 - [x] Actualizar `README.md` con nombre temporal, stack y enlaces a PRD / ONBOARDING / TODO
   - **Nota:** incluye estado, estructura y desarrollo local. Sin datos de la infraestructura (el repositorio es público).

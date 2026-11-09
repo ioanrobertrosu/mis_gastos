@@ -15,3 +15,7 @@ app/backend/src/generated/
 # SO / editores
 .DS_Store
 Thumbs.db
+
+# Skills de terceros: se reinstalan desde skills-lock.json (y .claude/skills son enlaces locales)
+.agents/skills/
+.claude/skills/
