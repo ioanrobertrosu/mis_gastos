@@ -19,7 +19,7 @@ Toda la base de código debe construirse bajo la disciplina estricta de **Test-D
 | **Realtime** | **Fastify WebSocket** | Las mutaciones impactan en tiempo real a todos los clientes conectados al mismo budget. | 
 | **Base de Datos** | **Supabase Hosted PostgreSQL + Prisma ORM** | Tipado estricto extremo a extremo, soporte transaccional ACID, índices B-Tree para consultas rápidas. | 
 | **Auth** | **Supabase Auth (Delegada)** | Autenticación basada en JWT (OAuth de Google preconfigurado). Soporte futuro multi-proveedor. | 
-| **Testing** | **Vitest + RNTL + Supertest** | Entorno de ejecución rápido para soporte TDD estricto. | 
+| **Testing** | **Vitest** (backend) · **jest-expo + RNTL** (frontend) | Vitest es rápido para TDD estricto en el backend (con `fastify.inject` en lugar de Supertest); en React Native, `jest-expo` tiene mejor soporte que Vitest. | 
 
 ## 3. Architecture & Infrastructure
 
@@ -73,17 +73,17 @@ services:
 
 Diseño normalizado con atomización de identidades, índices de rendimiento y UUIDs por seguridad.
 
-```
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
+> **Fuente de verdad:** [`app/backend/prisma/schema.prisma`](app/backend/prisma/schema.prisma) y sus migraciones. Esta sección es una copia de referencia (noviembre de 2026); ante cualquier diferencia, manda el fichero. La conexión no se declara en el esquema: Prisma 7 la lee de `prisma.config.ts` (`DIRECT_URL` para migraciones) y el runtime usa el adaptador `pg` con `DATABASE_URL`.
 
-generator client {
-  provider = "prisma-client-js"
-}
+Convenciones clave:
 
+- **`User.id` = `sub` del JWT de Supabase** (sin `@default`). `Identity` registra los proveedores vinculados.
+- **Solo gastos:** `Transaction.amount` es siempre positivo (presupuesto base cero; lo asignado son los límites de las categorías). Dinero en `Decimal(12, 2)`.
+- **Borrado lógico:** `User.deletedAt` (la cuenta se anonimiza, incluido el email, para conservar el historial) y `Category.isActive`. Los autores (`createdById`, `userId`) son opcionales con `onDelete: SetNull`.
+- **Paginación keyset:** transacciones por `(date, id)`, contribuciones por `(createdAt, id)` y actividad por `seq`, cada una con su índice compuesto.
+- **Actividad:** catálogo cerrado `ActivityAction`; `dedupeKey` único impide repetir una alerta (acción + categoría + mes).
+
+```prisma
 enum Role {
   OWNER
   EDITOR
@@ -100,145 +100,214 @@ enum Currency {
   GBP
 }
 
+model User {
+  // Sin @default: se asigna explícitamente con el `sub` del JWT de Supabase.
+  id          String    @id
+  email       String    @unique
+  displayName String?
+  avatarUrl   String?
+  createdAt   DateTime  @default(now())
+  // Soft delete: la fila se conserva anonimizada para no romper el historial de sus movimientos.
+  deletedAt   DateTime?
+
+  identities         Identity[]
+  memberships        BudgetMember[]
+  invitationsCreated OneTimeInvite[]
+  transactions       Transaction[]
+  contributions      GoalContribution[]
+  activities         ActivityLog[]
+}
+
+// Proveedor de login vinculado (Google, Apple…). Registro informativo: User.id ya es el `sub`.
+model Identity {
+  id         String   @id @default(uuid())
+  userId     String
+  provider   String // p. ej. "google", "apple", "email"
+  providerId String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@index([userId])
+}
+
+model Budget {
+  id        String   @id @default(uuid())
+  name      String
+  currency  Currency @default(EUR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      BudgetMember[]
+  invitations  OneTimeInvite[]
+  categories   Category[]
+  transactions Transaction[]
+  goals        Goal[]
+  activities   ActivityLog[]
+}
+
+model Category {
+  id           String   @id @default(uuid())
+  budgetId     String
+  name         String
+  monthlyLimit Decimal  @db.Decimal(12, 2)
+  icon         String   @default("folder")
+  colorHex     String   @default("#64748B")
+  // Soft delete: las transacciones de una categoría desactivada se conservan.
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  budget       Budget        @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([budgetId])
+}
+
+/// Gasto en una categoría (modelo base cero: solo gastos; el asignado son los límites).
+model Transaction {
+  id          String   @id @default(uuid())
+  // Redundante con la categoría (que nunca cambia de presupuesto): permite listar y agregar
+  // por presupuesto sin join.
+  budgetId    String
+  categoryId  String
+  // Autor; los usuarios borrados se conservan anonimizados, así que la referencia se mantiene.
+  createdById String?
+  amount      Decimal  @db.Decimal(12, 2)
+  description String?
+  date        DateTime @db.Date
+  // Solo marca informativa: las recurrentes se registran a mano cada mes.
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  budget    Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  category  Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([budgetId, date(sort: Desc), id(sort: Desc)])
+  @@index([categoryId, date])
+}
+
+model BudgetMember {
+  id       String   @id @default(uuid())
+  userId   String
+  budgetId String
+  role     Role     @default(LIMITED_EDITOR)
+  joinedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, budgetId])
+  @@index([budgetId])
+}
+
+model OneTimeInvite {
+  id          String   @id @default(uuid())
+  budgetId    String
+  createdById String
+  token       String   @unique @default(uuid())
+  role        Role     @default(LIMITED_EDITOR)
+  expiresAt   DateTime
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  budget    Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([budgetId])
+  @@index([createdById])
+}
+
 enum GoalStatus {
   IN_PROGRESS
   REACHED
   ARCHIVED
 }
 
-model User {
-  id             String          @id @default(uuid())
-  email          String          @unique
-  displayName    String?
-  avatarUrl      String?
-  createdAt      DateTime        @default(now())
-
-  identities     Identity[]
-  memberships    BudgetMember[]
-  contributions  GoalContribution[]
-  activities     ActivityLog[]
-}
-
-model Identity {
-  id             String          @id @default(uuid())
-  userId         String
-  provider       String          // e.g., "google", "apple"
-  providerId     String
-  createdAt      DateTime        @default(now())
-  
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerId])
-}
-
-model Budget {
-  id             String          @id @default(uuid())
-  name           String
-  currency       Currency        @default(EUR)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-
-  members        BudgetMember[]
-  categories     Category[]
-  goals          Goal[]
-  invitations    OneTimeInvite[]
-  activities     ActivityLog[]
-}
-
-model BudgetMember {
-  id             String          @id @default(uuid())
-  userId         String
-  budgetId       String
-  role           Role            @default(LIMITED_EDITOR)
-  joinedAt       DateTime        @default(now())
-
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  budget         Budget          @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, budgetId])
-}
-
-model OneTimeInvite {
-  id             String          @id @default(uuid())
-  budgetId       String
-  token          String          @unique @default(uuid())
-  role           Role            @default(LIMITED_EDITOR)
-  expiresAt      DateTime
-  isUsed         Boolean         @default(false)
-  createdAt      DateTime        @default(now())
-
-  budget         Budget          @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-}
-
-model Category {
-  id             String          @id @default(uuid())
-  budgetId       String
-  name           String
-  monthlyLimit   Decimal         @db.Decimal(12, 2)
-  icon           String          @default("folder")
-  colorHex       String          @default("#64748B")
-  isActive       Boolean         @default(true) // Soft delete
-
-  budget         Budget          @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  transactions   Transaction[]
-}
-
-model Transaction {
-  id             String          @id @default(uuid())
-  categoryId     String
-  amount         Decimal         @db.Decimal(12, 2)
-  description    String?
-  date           DateTime        @default(now())
-  isRecurring    Boolean         @default(false)
-
-  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@index([categoryId])
-  @@index([date])
-}
-
+/// Meta de ahorro del presupuesto. `currentAmount` es la suma de sus contribuciones.
 model Goal {
-  id             String             @id @default(uuid())
-  budgetId       String
-  title          String
-  targetAmount   Decimal            @db.Decimal(12, 2)
-  currentAmount  Decimal            @default(0) @db.Decimal(12, 2)
-  deadline       DateTime?
-  status         GoalStatus         @default(IN_PROGRESS)
-  createdAt      DateTime           @default(now())
+  id            String     @id @default(uuid())
+  budgetId      String
+  title         String
+  targetAmount  Decimal    @db.Decimal(12, 2)
+  currentAmount Decimal    @default(0) @db.Decimal(12, 2)
+  deadline      DateTime?  @db.Date
+  status        GoalStatus @default(IN_PROGRESS)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  budget         Budget             @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  contributions  GoalContribution[]
+  budget        Budget             @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  contributions GoalContribution[]
+
+  @@index([budgetId])
 }
 
 model GoalContribution {
-  id             String          @id @default(uuid())
-  goalId         String
-  userId         String
-  amount         Decimal         @db.Decimal(12, 2)
-  createdAt      DateTime        @default(now())
+  id        String   @id @default(uuid())
+  goalId    String
+  // Autor; los usuarios borrados se conservan anonimizados, así que la referencia se mantiene.
+  userId    String?
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
 
-  goal           Goal            @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal Goal  @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([goalId, createdAt(sort: Desc), id(sort: Desc)])
 }
 
+/// Catálogo cerrado de acciones del muro de actividad.
+enum ActivityAction {
+  BUDGET_CREATED
+  BUDGET_UPDATED
+  MEMBER_JOINED
+  MEMBER_ROLE_CHANGED
+  MEMBER_REMOVED
+  MEMBER_LEFT
+  OWNERSHIP_TRANSFERRED
+  CATEGORY_CREATED
+  CATEGORY_UPDATED
+  CATEGORY_LIMIT_UPDATED
+  CATEGORY_DEACTIVATED
+  CATEGORY_REACTIVATED
+  TRANSACTION_CREATED
+  TRANSACTION_UPDATED
+  TRANSACTION_DELETED
+  GOAL_CREATED
+  GOAL_UPDATED
+  GOAL_ARCHIVED
+  GOAL_DELETED
+  GOAL_CONTRIBUTION
+  GOAL_REACHED
+  CATEGORY_90_PERCENT
+  CATEGORY_LIMIT_EXCEEDED
+}
+
+/// Muro de actividad del presupuesto. Se escribe en la misma transacción que la mutación.
 model ActivityLog {
-  id             String          @id @default(uuid())
-  budgetId       String
-  userId         String
-  action         String          // e.g., "CATEGORY_LIMIT_UPDATED", "MEMBER_JOINED"
-  metadata       Json?           // Detalles extra del evento
-  createdAt      DateTime        @default(now())
+  id        String         @id @default(uuid())
+  budgetId  String
+  // Quién lo hizo; los usuarios borrados se conservan anonimizados, así que la referencia se mantiene.
+  userId    String?
+  action    ActivityAction
+  metadata  Json?
+  createdAt DateTime       @default(now())
+  // Orden estable: varias entradas de una misma transacción comparten `createdAt` (hora de
+  // inicio de la transacción), así que el muro se ordena y pagina por esta secuencia. Sin índice
+  // propio: con uno global, el planificador lo prefiere al de (budgetId, seq) cuando un presupuesto
+  // acapara la tabla y recorre las entradas de todos los demás.
+  seq       Int            @default(autoincrement())
+  // Solo en alertas: impide repetir la misma alerta (acción + categoría + mes).
+  dedupeKey String?        @unique
 
-  budget         Budget          @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  user           User            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@index([budgetId])
-  @@index([createdAt(sort: Desc)])
+  @@index([budgetId, seq(sort: Desc)])
 }
-
 ```
 
 ## 5. Business Rules & Core Features

@@ -19,15 +19,21 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
 ### 0.1 Configuración del repositorio
 - [x] Corregir `.gitignore`: sustituir `.*` por entradas explícitas (`.env`, `.env.*.local`, `oauth/`, `node_modules/`, `dist/`, `coverage/`, `.expo/`) para no ignorar `.env.example`, `.agents/`, `.claude/`, `.github/`, `.dockerignore`
 - [x] Verificar que `.env` y `oauth/*.plist` siguen fuera del control de versiones tras el cambio
-- [ ] Versionar `.env.example`, `.agents/skills/` y `.claude/skills/` (si procede)
-- [ ] Corregir enlaces rotos de [rules/index.md](rules/index.md) (`rules/rules/...` → rutas relativas)
-- [ ] Actualizar `README.md` con nombre temporal, stack y enlaces a PRD / ONBOARDING / TODO
+- [x] Versionar `.env.example`, `.agents/skills/` y `.claude/skills/` (si procede)
+  - **Decisión:** `app/backend/.env.example` ya está versionado. Las skills no: son de terceros y se reinstalan desde `skills-lock.json` (versionado, con origen y hash); `.claude/skills/` son enlaces simbólicos con rutas absolutas de esta máquina. Ahora mismo las carpetas de `.agents/skills/` están vacías (sin ningún fichero): hay que reinstalarlas para poder usarlas.
+- [x] Corregir enlaces rotos de [rules/index.md](rules/index.md) (`rules/rules/...` → rutas relativas)
+- [x] Actualizar `README.md` con nombre temporal, stack y enlaces a PRD / ONBOARDING / TODO
+  - **Nota:** incluye estado, estructura y desarrollo local. Sin datos de la infraestructura (el repositorio es público).
 
 ### 0.2 Variables de entorno
-- [ ] Unificar nombres entre `.env`, `.env.example`, `docker-compose.yml` y PRD (`DATABASE_URL`/`DIRECT_URL` vs `SUPABASE_DATABASE_URL`/`SUPABASE_DIRECT_URL`)
-- [ ] Añadir a `.env.example`: `JWT_ISSUER`, `JWT_AUDIENCE`, `SUPABASE_CALLBACK_SIGNIN_URL`
-- [ ] Añadir `?pgbouncer=true` (y `connection_limit` adecuado) a la URL del transaction pooler para Prisma
-- [ ] Separar variables de backend y de cliente (las del cliente con prefijo `EXPO_PUBLIC_`; los `CLIENT_SECRET` nunca en el cliente)
+- [x] Unificar nombres entre `.env`, `.env.example`, `docker-compose.yml` y PRD (`DATABASE_URL`/`DIRECT_URL` vs `SUPABASE_DATABASE_URL`/`SUPABASE_DIRECT_URL`)
+  - **Decisión:** `DATABASE_URL`/`DIRECT_URL` en todas partes (ya coincidían). El fragmento de Prisma del PRD (`datasource` con `url`/`directUrl`) es anterior a Prisma 7, que lo configura en `prisma.config.ts`.
+- [x] Añadir a `.env.example`: `JWT_ISSUER`, `JWT_AUDIENCE`, `SUPABASE_CALLBACK_SIGNIN_URL`
+  - **Decisión:** `JWT_ISSUER` y `JWT_AUDIENCE` ya están. `SUPABASE_CALLBACK_SIGNIN_URL` no: el backend no la usa (solo verifica JWT); es la redirección del login OAuth y irá en la configuración del cliente (Fase 9).
+- [x] Añadir `?pgbouncer=true` (y `connection_limit` adecuado) a la URL del transaction pooler para Prisma
+  - **Decisión:** no hace falta. Con Prisma 7 y el adaptador `pg`, ambos parámetros se ignoran (comprobado: `pg` no los envía) y el adaptador no nombra las sentencias preparadas, así que el pooler en modo transacción funciona sin ellos. El tamaño del pool es el de `pg` (10). Retirados de `.env.example`.
+- [x] Separar variables de backend y de cliente (las del cliente con prefijo `EXPO_PUBLIC_`; los `CLIENT_SECRET` nunca en el cliente)
+  - **Decisión:** el backend solo lee `app/backend/.env`. El cliente tendrá su propio `.env` en su carpeta, solo con variables `EXPO_PUBLIC_` (públicas por definición: acaban en el bundle). Ningún secreto (`CLIENT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, JWT) sale del backend.
 
 ### 0.3 Docker Compose
 - [x] Pasar al servicio `api` todas las variables necesarias (`DATABASE_URL`, `DIRECT_URL`, `SUPABASE_JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `PORT`, `NODE_ENV`)
@@ -49,19 +55,22 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - **Decisión:** carpetas independientes `app/backend` y `app/frontend` (sin workspaces); el backend se despliega dockerizado en un servidor propio. Expo Router crea su propia carpeta de rutas, por lo que quedará `app/frontend/app/`.
 - [x] ❓ Versión de NativeWind compatible con Tailwind v4 y con el SDK de Expo elegido
   - **Decisión:** usar la versión de NativeWind compatible con Tailwind v4 (v5). Verificar su estabilidad y el SDK de Expo compatible al iniciar la Fase 9.
-- [ ] Reflejar la decisión de testing del frontend en la tabla de stack del [PRD.md](PRD.md) (fila *Testing*)
+- [x] Reflejar la decisión de testing del frontend en la tabla de stack del [PRD.md](PRD.md) (fila *Testing*)
 
 ### 0.5 Correcciones al esquema del PRD
 - [x] `User.id` sin `@default(uuid())`: se asigna explícitamente con el `sub` del JWT
-- [ ] `ActivityLog.userId` → `String?` (con `onDelete: SetNull` el campo debe ser opcional)
-- [ ] Añadir `Transaction.createdById` (+ relación con `User`) para la regla de LIMITED_EDITOR
-- [ ] Añadir tipo de transacción (`EXPENSE` / `INCOME`) o documentar la convención de signo del `amount`
-- [ ] Añadir a `User` un marcador de borrado lógico (`deletedAt`) y anonimizar también `email` (es `@unique`)
-- [ ] Añadir `createdAt` a `Transaction` (distinto de `date`, necesario para cursores estables)
-- [ ] Añadir índices sobre FKs sin indexar (`BudgetMember.budgetId`, `Category.budgetId`, `Goal.budgetId`, `GoalContribution.goalId`, `Identity.userId`)
-- [ ] Índice compuesto para paginación: `Transaction(categoryId, date DESC, id)` y `ActivityLog(budgetId, createdAt DESC, id)`
+- [x] `ActivityLog.userId` → `String?` (con `onDelete: SetNull` el campo debe ser opcional)
+- [x] Añadir `Transaction.createdById` (+ relación con `User`) para la regla de LIMITED_EDITOR
+- [x] Añadir tipo de transacción (`EXPENSE` / `INCOME`) o documentar la convención de signo del `amount`
+  - **Decisión:** solo gastos, `amount` siempre positivo (`PositiveMoneySchema`); documentado en el esquema y en la sección 4 del PRD.
+- [x] Añadir a `User` un marcador de borrado lógico (`deletedAt`) y anonimizar también `email` (es `@unique`)
+- [x] Añadir `createdAt` a `Transaction` (distinto de `date`, necesario para cursores estables)
+- [x] Añadir índices sobre FKs sin indexar (`BudgetMember.budgetId`, `Category.budgetId`, `Goal.budgetId`, `GoalContribution.goalId`, `Identity.userId`)
+- [x] Índice compuesto para paginación: `Transaction(categoryId, date DESC, id)` y `ActivityLog(budgetId, createdAt DESC, id)`
+  - **Nota:** los definitivos siguen el orden real de cada listado: `Transaction(budgetId, date DESC, id DESC)` (+ `(categoryId, date)` para el filtro), `ActivityLog(budgetId, seq DESC)` y `GoalContribution(goalId, createdAt DESC, id DESC)`. Comprobados con `EXPLAIN` en la revisión de consultas (Fase 8).
 - [x] Revisar `OneTimeInvite`: `@@index([token])` es redundante con `@unique`; añadir `createdById`
-- [ ] Reflejar todos los cambios en la sección 4 del [PRD.md](PRD.md)
+- [x] Reflejar todos los cambios en la sección 4 del [PRD.md](PRD.md)
+  - **Nota:** la sección 4 es ahora una copia del esquema actual con las convenciones clave; la fuente de verdad es `schema.prisma`.
 
 ---
 
