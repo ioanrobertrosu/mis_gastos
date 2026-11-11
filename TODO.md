@@ -390,7 +390,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - [x] 🟢 `src/utils/haptics.ts`.
 
 ### 9.3 Datos y estado
-- [ ] Cliente HTTP tipado que inyecta el JWT de Supabase
+- [x] Cliente HTTP tipado que inyecta el JWT de Supabase
+  - [x] 🔴 Test: `/api/v1` + query (sin `undefined`); Bearer pedido en cada petición y ausente sin sesión; JSON y `Content-Type` solo con cuerpo; 204 → `undefined`; errores como `ApiError` (`status`, `code`, `message`, `requestId`): de la API, `HTTP_ERROR` si no lo son (502 del proxy) y `NETWORK_ERROR` (estado 0) sin conexión; un `AbortError` se propaga tal cual
+  - [x] 🟢 `src/api/client.ts` (`createApiClient`, con `expo/fetch` por defecto).
+  - **Decisión:** tipado con genéricos, sin validar la respuesta en tiempo de ejecución (el backend es nuestro). El token llega de fuera (`getToken`): se conecta a la sesión de Supabase en la 9.4.
 - [ ] `QueryClientProvider` y convención de `queryKeys`
 - [ ] Store de Zustand solo para UI efímera (modo blur, filtros, modales)
 - [ ] Cliente WebSocket con reconexión que dispara `invalidateQueries`
