@@ -65,6 +65,20 @@ describe('queryKeys', () => {
     expect(result).toEqual(lists);
   });
 
+  it('summary(id) sin mes es el prefijo de los resúmenes de todos los meses', async () => {
+    const months = [
+      queryKeys.budgets.summary(A, '2026-10'),
+      queryKeys.budgets.summary(A, '2026-11'),
+    ];
+
+    const result = await invalidated(queryKeys.budgets.summary(A), [
+      ...months,
+      queryKeys.budgets.categories(A),
+    ]);
+
+    expect(result).toEqual(months);
+  });
+
   it('invalidar las metas incluye cada meta y sus contribuciones', async () => {
     const goals = [
       queryKeys.budgets.goals(A),

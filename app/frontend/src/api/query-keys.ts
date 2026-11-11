@@ -17,7 +17,11 @@ export const queryKeys = {
   budgets: {
     all: () => ['budgets'] as const,
     detail: (budgetId: string) => ['budgets', budgetId] as const,
-    summary: (budgetId: string, month: string) => ['budgets', budgetId, 'summary', month] as const,
+    /** Sin mes: el prefijo de los resúmenes de todos los meses. */
+    summary: (budgetId: string, month?: string) =>
+      month
+        ? (['budgets', budgetId, 'summary', month] as const)
+        : (['budgets', budgetId, 'summary'] as const),
     categories: (budgetId: string, params?: { month?: string; includeInactive?: boolean }) =>
       params
         ? (['budgets', budgetId, 'categories', params] as const)

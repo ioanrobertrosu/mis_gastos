@@ -402,7 +402,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - [x] 🔴 Test: estado inicial; modo blur que se activa y desactiva; filtros de transacciones por presupuesto (sustituir y limpiar sin tocar otros); un solo modal abierto; `reset` al cerrar sesión; sin persistencia. `Amount` sigue el modo blur global salvo `hidden` explícito
   - [x] 🟢 `src/stores/ui-store.ts`; `Amount` lee el modo blur del store.
   - **Decisión:** el modo blur es efímero: al abrir la app los importes vuelven a verse (para conservarlo, sería una preferencia en AsyncStorage como el tema). Nota de tests: en RNTL 14 `act` es asíncrono y hay que esperarlo.
-- [ ] Cliente WebSocket con reconexión que dispara `invalidateQueries`
+- [x] Cliente WebSocket con reconexión que dispara `invalidateQueries`
+  - [x] 🔴 Test: `wss://…/api/v1/ws` con el JWT como subprotocolo; suscripciones pedidas antes y después de abrir; cada entidad invalida solo lo suyo (y siempre la actividad); al perder un presupuesto (expulsión, salida, borrado, `NOT_FOUND`) se borran sus datos de la caché, se refrescan `/me` y la lista y se avisa; reconexión 1-2-4… s hasta 30 s (reinicio al conectar), 4401 inmediata con token nuevo, 4429 a los 30 s, 4403 sin reconectar; al reconectar se resuscribe e invalida lo suscrito; `disconnect` cancela todo
+  - [x] 🟢 `src/api/realtime.ts`; `queryKeys.budgets.summary(id)` sin mes pasa a ser prefijo.
+  - **Decisión:** la lista de presupuestos y `/me` se invalidan con `exact` (si no, `['budgets']` arrastraría todos los presupuestos). Reconexión sin jitter (una sola instancia del backend y pocos usuarios). Se conecta a la sesión real en la 9.4, junto con el cliente HTTP.
 
 ### 9.4 Autenticación
 - [ ] Integrar `@supabase/supabase-js` con almacenamiento seguro de sesión (`expo-secure-store`)
