@@ -1,4 +1,5 @@
 import { Text } from '@/components/text';
+import { useUiStore } from '@/stores/ui-store';
 import type { Tone } from '@/theme/tone';
 import { type Currency, toCents } from '@/utils/money';
 
@@ -10,19 +11,14 @@ export interface AmountProps {
   value: string;
   currency: Currency;
   tone?: Tone;
-  /** Modo blur: no se muestra ni se anuncia la cifra. */
+  /** Modo blur: no se muestra ni se anuncia la cifra. Por defecto, el modo blur global. */
   hidden?: boolean;
   className?: string;
 }
 
-export function Amount({
-  value,
-  currency,
-  tone = 'neutral',
-  hidden = false,
-  className,
-}: AmountProps) {
-  if (hidden) {
+export function Amount({ value, currency, tone = 'neutral', hidden, className }: AmountProps) {
+  const amountsHidden = useUiStore((state) => state.amountsHidden);
+  if (hidden ?? amountsHidden) {
     return (
       <Text tone={tone} accessibilityLabel="Importe oculto" className={className}>
         ••••

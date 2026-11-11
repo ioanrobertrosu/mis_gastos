@@ -398,7 +398,10 @@ Checklist maestro de desarrollo. Fuente de verdad funcional: [PRD.md](PRD.md). R
   - [x] 🔴 Test: claves jerárquicas comprobadas con un `QueryClient` real (invalidar un presupuesto refresca todo lo suyo y nada más; `transactions(id)` es prefijo de sus listas filtradas; las metas incluyen sus contribuciones; filtros iguales en otro orden, misma clave); `shouldRetry` (nunca 4xx ni 429 ni errores ajenos a la API; 5xx y sin conexión hasta 2 veces); 30 s de `staleTime` y mutaciones sin reintento; `QueryProvider` con un único cliente que avisa del primer/segundo plano (`AppState`) y lo da a toda la app
   - [x] 🟢 `src/api/query-keys.ts`, `query-client.ts` y `query-provider.tsx`; el layout raíz lo envuelve todo.
   - **Nota:** sin `onlineManager` (requeriría `@react-native-community/netinfo`): la falta de conexión se detecta al fallar la petición (`NETWORK_ERROR`), que sí se reintenta.
-- [ ] Store de Zustand solo para UI efímera (modo blur, filtros, modales)
+- [x] Store de Zustand solo para UI efímera (modo blur, filtros, modales)
+  - [x] 🔴 Test: estado inicial; modo blur que se activa y desactiva; filtros de transacciones por presupuesto (sustituir y limpiar sin tocar otros); un solo modal abierto; `reset` al cerrar sesión; sin persistencia. `Amount` sigue el modo blur global salvo `hidden` explícito
+  - [x] 🟢 `src/stores/ui-store.ts`; `Amount` lee el modo blur del store.
+  - **Decisión:** el modo blur es efímero: al abrir la app los importes vuelven a verse (para conservarlo, sería una preferencia en AsyncStorage como el tema). Nota de tests: en RNTL 14 `act` es asíncrono y hay que esperarlo.
 - [ ] Cliente WebSocket con reconexión que dispara `invalidateQueries`
 
 ### 9.4 Autenticación

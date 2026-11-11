@@ -1,10 +1,15 @@
-import { render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 
 import { Amount } from '@/components/amount';
+import { useUiStore } from '@/stores/ui-store';
 import { TONE_CLASSES } from '@/theme/tone';
 
 // Intl separa la cifra del símbolo con un espacio duro (U+00A0).
 const nbsp = (text: string) => text.replace(/ /g, ' ');
+
+beforeEach(async () => {
+  await act(() => useUiStore.getState().reset());
+});
 
 describe('Amount', () => {
   it.each([
@@ -28,5 +33,23 @@ describe('Amount', () => {
     await render(<Amount value="150.00" currency="EUR" tone="danger" />);
 
     expect(screen.getByText(nbsp('150,00 €')).props.className).toContain(TONE_CLASSES.danger.text);
+  });
+
+  it('sigue el modo blur global: se oculta y vuelve a mostrarse al cambiarlo', async () => {
+    await render(<Amount value="80.00" currency="EUR" />);
+
+    await act(() => useUiStore.getState().toggleAmountsHidden());
+    expect(screen.getByLabelText('Importe oculto')).toBeOnTheScreen();
+
+    await act(() => useUiStore.getState().toggleAmountsHidden());
+    expect(screen.getByText(nbsp('80,00 €'))).toBeOnTheScreen();
+  });
+
+  it('hidden explícito manda sobre el modo global', async () => {
+    await act(() => useUiStore.getState().toggleAmountsHidden());
+
+    await render(<Amount value="80.00" currency="EUR" hidden={false} />);
+
+    expect(screen.getByText(nbsp('80,00 €'))).toBeOnTheScreen();
   });
 });
