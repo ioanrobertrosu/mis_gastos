@@ -3,6 +3,7 @@ import '@/global.css';
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 
+import { QueryProvider } from '@/api/query-provider';
 import { applyThemePreference, loadThemePreference } from '@/theme/theme-preference';
 
 export default function RootLayout() {
@@ -11,5 +12,9 @@ export default function RootLayout() {
     void loadThemePreference().then(applyThemePreference);
   }, []);
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <QueryProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </QueryProvider>
+  );
 }
